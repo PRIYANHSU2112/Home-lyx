@@ -5,10 +5,11 @@ const {
 const reviewModel = require("../../models/ecommerce/reviewModel");
 const taxModel = require("../../models/taxModel");
 const brandModel = require("../../models/ecommerce/brandModel");
+const categoryModel = require("../../models/ecommerce/categoryModel");
 const { generateTransactionId } = require("../../helper/slugGenreted");
 const { calculatePrice } = require("../../helper/priceCount");
 const { size } = require("lodash");
-const { validateVariants } = require("../../validators/variantValidetor");
+const { validateVariants, validateVariantSizesAgainstCategory } = require("../../validators/variantValidetor");
 const mongoose = require("mongoose");
 
 // ========================== Get Id =================================== ||
@@ -64,6 +65,19 @@ exports.createProduct = async (req, res) => {
     const variantError = await validateVariants(variants);
     if (variantError) return res.status(400).json({ success: false, message: variantError });
 
+    // Fetch category and validate variant sizes against predefined sizes
+    const category = await categoryModel.findById(categoryId);
+    if (!category) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+
+    if (category.size && category.size.length > 0) {
+      const sizeValidationError = validateVariantSizesAgainstCategory(variants, category.size);
+      if (sizeValidationError) {
+        return res.status(400).json({ success: false, message: sizeValidationError });
+      }
+    }
+
     const requiredFields = [
       [title,          "title"],
       [features,       "features"],
@@ -93,6 +107,7 @@ exports.createProduct = async (req, res) => {
     const taxId = tax._id;
 
     // ── SKU Uniqueness Check ─────────────────────────────────────────
+
     if (sku) {
       const skuExists = await productModel.exists({ sku });
       if (skuExists)
@@ -524,7 +539,7 @@ exports.getAllProductByCategoryId = async (req, res) => {
 exports.getAllProductByPartnerId = async (req, res) => {
   try {
     const partnerId = req.partner._id;
-    const { search, page = 1, limit = 10, status, categoryId, brandId } = req.query;
+    const { search, page = 1, limit = 10, status, categoryId, brandId , disable } = req.query;
     const skip = (page - 1) * limit;
 
     const query = { partnerId };
@@ -538,6 +553,10 @@ exports.getAllProductByPartnerId = async (req, res) => {
     if (brandId) {
       query.brandId = brandId;
     }
+
+    if(disable !== undefined) {
+      query.disable = disable === "true";
+     }
 
     if (search) {
       query.$or = [
@@ -612,6 +631,20 @@ exports.updateProduct = async (req, res) => {
           success: false,
           message: error
         });
+      }
+
+      // Validate variant sizes against category sizes
+      const categoryToCheck = categoryId ? categoryId : product.categoryId;
+      const category = await categoryModel.findById(categoryToCheck);
+      if (!category) {
+        return res.status(404).json({ success: false, message: "Category not found" });
+      }
+
+      if (category.size && category.size.length > 0) {
+        const sizeValidationError = validateVariantSizesAgainstCategory(variants, category.size);
+        if (sizeValidationError) {
+          return res.status(400).json({ success: false, message: sizeValidationError });
+        }
       }
     }
 
@@ -812,6 +845,62 @@ exports.disableProduct = async (req, res) => {
     }
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ============ Partner Toggle Disable/Enable =============== ||
+
+exports.partnerToggleDisable = async (req, res) => {
+  try {
+    const { productId } = req.body;
+    const partnerId = req.partner._id;
+
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid product ID format",
+      });
+    }
+
+    const product = await productModel.findById(productId);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // Verify ownership
+    if (product.partnerId.toString() !== partnerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only toggle your own products",
+      });
+    }
+
+    const updatedProduct = await productModel.findByIdAndUpdate(
+      productId,
+      { $set: { disable: !product.disable } },
+      { new: true }
+    );
+
+    const message = updatedProduct.disable 
+      ? "Product successfully disabled" 
+      : "Product successfully enabled";
+
+    return res.status(200).json({
+      success: true,
+      message,
+      data: {
+        productId: updatedProduct._id,
+        disable: updatedProduct.disable,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 

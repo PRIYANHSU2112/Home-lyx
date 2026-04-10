@@ -83,8 +83,8 @@ exports.getCategoryBySlug = async (req, res) => {
 
 exports.createCategory = async (req, res) => {
   try {
-    const { name, adminCommission } = req.body;
-
+    const { name, adminCommission, size } = req.body;
+    console.log(name, adminCommission, size);
     if (!name) {
       return res.status(400).json({
         success: false,
@@ -94,10 +94,26 @@ exports.createCategory = async (req, res) => {
 
     //  console.log(req.files);
     //  console.log(req.files.icon[0]);
+
     if (!req.files || !req.files.icon) {
       return res.status(400).json({
         success: false,
         message: "Icon Is Required",
+      });
+    }
+    
+    if(isNaN(adminCommission)) {
+      return res.status(400).json({
+        success: false,
+        message: "Admin Commission must be a number",
+      });
+    }
+
+
+    if(!size && size.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Size cannot be an empty ",
       });
     }
 
@@ -111,11 +127,22 @@ exports.createCategory = async (req, res) => {
       name.toLowerCase(),
     );
 
+    // Validate and normalize size array
+    let sizeArray = [];
+    if (size) {
+      if (Array.isArray(size)) {
+        sizeArray = size.map(s => String(s).trim()).filter(s => s.length > 0);
+      } else if (typeof size === 'string') {
+        sizeArray = [size.trim()];
+      }
+    }
+
     const category = await categoryModel.create({
       name,
       icon,
       slug,
       adminCommission: adminCommission || 1,
+      size: sizeArray,
     });
 
     return res.status(201).json({
@@ -159,6 +186,33 @@ exports.getByCategoryId = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message + "sdsdsd",
+    });
+  }
+};
+
+exports.getCategorySizes = async (req, res) => {
+  try {
+    const category = req.Category;
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Category sizes fetched successfully",
+      data: {
+        categoryId: category._id,
+        name: category.name,
+        sizes: category.size || [],
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
     });
   }
 };
@@ -214,7 +268,7 @@ exports.getAllCategory = async (req, res) => {
 
 exports.updateCategory = async (req, res) => {
   try {
-    let { name, pCategory, adminCommission } = req.body;
+    let { name, pCategory, adminCommission, size } = req.body;
     let icons;
     if (req.files) {
       req.files.banner
@@ -259,6 +313,17 @@ exports.updateCategory = async (req, res) => {
         name ? name : req.Category?.name,
       );
     }
+
+    // Validate and normalize size array
+    let sizeArray = req.Category.size || [];
+    if (size) {
+      if (Array.isArray(size)) {
+        sizeArray = size.map(s => String(s).trim()).filter(s => s.length > 0);
+      } else if (typeof size === 'string') {
+        sizeArray = [size.trim()];
+      }
+    }
+
     let updateCategory = await categoryModel.findByIdAndUpdate(
       { _id: req.Category._id },
       {
@@ -269,6 +334,7 @@ exports.updateCategory = async (req, res) => {
           icon: icons ? icons : req.Category.icon,
           slug: slug,
           adminCommission: adminCommission !== undefined ? adminCommission : req.Category.adminCommission,
+          size: sizeArray,
         },
       },
       { new: true },

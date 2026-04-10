@@ -82,6 +82,13 @@ router.put(
   controller.updateProduct
 );
 
+// partner toggle disable/enable product
+router.post(
+  "/eCommerce/partner/toggleDisable",
+  partnerRoute,
+  controller.partnerToggleDisable
+);
+
 
 router.patch(
   "/eCommerce/disableProduct/:productId/:adminId",  //done

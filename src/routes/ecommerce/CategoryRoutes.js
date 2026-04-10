@@ -17,6 +17,11 @@ router.get(
   controller.getByCategoryId
 );
 
+router.get(
+  "/eCommerce/getCategorySizes/:categoryId",
+  controller.getCategorySizes
+);
+
 router.get("/eCommerce/getCategoryBySlug",controller.getCategoryBySlug); //done
 
 

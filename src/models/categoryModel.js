@@ -118,4 +118,13 @@ const categoryModel = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Indexes for better query performance
+categoryModel.index({ slug: 1 }); // For slug-based lookups
+categoryModel.index({ pCategory: 1 }); // For parent category queries
+categoryModel.index({ cityId: 1 }); // For city-based filtering
+categoryModel.index({ partnerId: 1 }); // For partner-specific categories
+categoryModel.index({ categoryStatus: 1 }); // For status filtering
+categoryModel.index({ disable: 1 }); // For active/inactive categories
+categoryModel.index({ name: "text" }); // For text search on name
+
 module.exports = mongoose.model("categoryModel", categoryModel);

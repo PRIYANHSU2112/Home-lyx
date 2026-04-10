@@ -15,11 +15,16 @@ const ecommerceCategoryModel = new mongoose.Schema(
     ],
     pCategory: { type: objectId, ref: "eCommerceCategoryModel", default: null },
     disable: { type: Boolean, default: false },
-
     slug: {
       type: String,
     },
     adminCommission: { type: Number, default: 1 },
+    size: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
   },
   { timestamps: true },
 );

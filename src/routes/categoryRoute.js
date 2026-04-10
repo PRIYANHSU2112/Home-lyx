@@ -2,7 +2,7 @@ const controller = require("../controllers/categoryController");
 const express = require("express");
 const router = express.Router();
 const { upload, imageValidetion } = require("../midellwares/multerMidellware");
-const { adminRoute } = require("../midellwares/auth");
+const { adminRoute,partnerRoute } = require("../midellwares/auth");
 const { isCategory } = require("../midellwares/PermissionMidellware");
 
 // router.param("categoryId", controller.getCategoryId);
@@ -125,13 +125,14 @@ router.get(
 
 // Partner creates category with pending status
 router.post(
-  "/partner/createCategory/:partnerId",
+  "/partner/createCategory",
   upload.fields([
     { name: "icon", maxCount: 1 },
     { name: "banner" },
     { name: "images" },
     { name: "videos" },
   ]),
+  partnerRoute,
   imageValidetion,
   controller.partnerCreateCategory,
 );
@@ -139,7 +140,14 @@ router.post(
 // Partner get their own categories
 router.get(
   "/partner/myCategories/:partnerId",
+  partnerRoute,
   controller.partnerGetMyCategories,
+);
+
+router.get(
+  "/partner/categorie-detail/:categoryId",
+  partnerRoute,
+  controller.getCategoryById,
 );
 
 // Partner update their own category (if pending)
@@ -151,8 +159,16 @@ router.put(
     { name: "images" },
     { name: "videos" },
   ]),
+  partnerRoute,
   imageValidetion,
   controller.partnerUpdateCategory,
+);
+
+// Partner toggle disable/enable their own category
+router.post(
+  "/partner/toggleDisable/:categoryId",
+  partnerRoute,
+  controller.partnerToggleDisable,
 );
 
 // ================ Admin Actions on Partner Categories ===============

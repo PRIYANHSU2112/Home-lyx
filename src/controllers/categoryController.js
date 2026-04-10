@@ -90,8 +90,8 @@ exports.getCategoryById = async (req, res) => {
     const category = await categoryModel
       .findById(categoryId)
 
-      .populate("pCategory", "name slug") 
-      .populate("cityId", "cityName"); 
+      .populate("pCategory", "name slug")
+      .populate("cityId", "cityName");
 
     //  Not found
     if (!category) {
@@ -766,7 +766,7 @@ exports.deleteCategory = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Category deleted successfully",
-      
+
     });
   } catch (error) {
     return res.status(500).json({
@@ -1030,7 +1030,7 @@ exports.getAllNullPcategory = async (req, res) => {
 // ======================= getAllCategoryWithPcategory ====================== ||
 exports.getCategoryWithPcategory = async (req, res) => {
   try {
-    let { page, disable } = req.query;
+    let { page, disable, categoryStatus } = req.query;
     const startIndex = page ? (page - 1) * 20 : 0;
     const endIndex = startIndex + 20;
 
@@ -1042,15 +1042,23 @@ exports.getCategoryWithPcategory = async (req, res) => {
       obj.disable = disable;
     }
 
-    let length = await categoryModel.countDocuments(obj);
-    let count = Math.ceil(length / 20);
-    const getAllCategorys = await categoryModel
-      .find(obj)
-      .sort({ createdAt: -1 })
-      .skip(startIndex)
-      .limit(endIndex)
-      .populate("cityId")
-      .populate("pCategory");
+    if (categoryStatus) {
+      obj.categoryStatus = categoryStatus;
+    }
+
+    const [length, getAllCategorys] = await Promise.all([
+      categoryModel.countDocuments(obj),
+      categoryModel
+        .find(obj)
+        .sort({ createdAt: -1 })
+        .skip(startIndex)
+        .limit(endIndex)
+        .populate("cityId")
+        .populate("pCategory"),
+    ]);
+        let count = Math.ceil(length / 20);
+
+
     // if (!getAllCategorys.length) {
     //   return res.status(400).send({
     //     success: false,
@@ -1219,7 +1227,7 @@ exports.getProductBySubCategorySlug = async (req, res) => {
 // ======================= getAllCategoryWithPcategory ====================== ||
 exports.getAllSubCategory = async (req, res) => {
   try {
-    let { page, disable } = req.query;
+    let { page, disable, categoryStatus } = req.query;
     const startIndex = page ? (page - 1) * 20 : 0;
     const endIndex = startIndex + 20;
     let obj = {
@@ -1228,15 +1236,23 @@ exports.getAllSubCategory = async (req, res) => {
     if (disable === "false" || disable === "true") {
       obj.disable = disable;
     }
-    let length = await categoryModel.countDocuments(obj);
-    let count = Math.ceil(length / 20);
-    const getAllCategorys = await categoryModel
-      .find(obj)
-      .sort({ createdAt: -1 })
-      .skip(startIndex)
-      .limit(endIndex)
-      .populate("cityId")
-      .populate("pCategory");
+    if (categoryStatus) {
+      obj.categoryStatus = categoryStatus;
+    }
+
+    const [length, getAllCategorys] = await Promise.all([
+      categoryModel.countDocuments(obj),
+      categoryModel
+        .find(obj)
+        .sort({ createdAt: -1 })
+        .skip(startIndex)
+        .limit(endIndex - startIndex)   // fix: limit = count, not end index
+        .populate("cityId", "cityName")
+        .populate("pCategory", "name")
+        .lean()
+    ]);
+        let count = Math.ceil(length / 20);
+
     // if (!getAllCategorys.length) {
     //   return res.status(400).send({
     //     success: false,
@@ -1262,7 +1278,7 @@ exports.getAllSubCategory = async (req, res) => {
 // Partner creates category (status: pending)
 exports.partnerCreateCategory = async (req, res) => {
   try {
-    const { partnerId } = req.params;
+    const partnerId = req.partner._id;
     const {
       name,
       pCategory,
@@ -1270,7 +1286,6 @@ exports.partnerCreateCategory = async (req, res) => {
       price,
       description,
       workExperience,
-      disable,
     } = req.body;
 
     // Validate partnerId
@@ -1359,7 +1374,6 @@ exports.partnerCreateCategory = async (req, res) => {
       price,
       description,
       workExperience,
-      disable: disable || false,
       icon,
       banner: bannerArr,
       images: imagesArr,
@@ -1390,7 +1404,7 @@ exports.partnerCreateCategory = async (req, res) => {
 exports.partnerGetMyCategories = async (req, res) => {
   try {
     const { partnerId } = req.params;
-    const { page = 1, limit = 20, categoryStatus } = req.query;
+    const { page = 1, limit = 20, categoryStatus, disable,status } = req.query;
 
     // Validate partnerId
     if (!mongoose.Types.ObjectId.isValid(partnerId)) {
@@ -1410,15 +1424,23 @@ exports.partnerGetMyCategories = async (req, res) => {
       filter.categoryStatus = categoryStatus;
     }
 
-    const total = await categoryModel.countDocuments(filter);
-
-    const categories = await categoryModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate("pCategory", "name")
-      .populate("cityId", "cityName");
+    if (disable !== undefined) {
+      filter.disable = disable;
+    }
+    if(status){
+      filter.status = status;
+    }
+    const [total, categories] = await Promise.all([
+      categoryModel.countDocuments(filter),
+      categoryModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit, 10))
+        .populate("pCategory", "name")
+        .populate("cityId", "cityName")
+        .lean()
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -1445,11 +1467,11 @@ exports.partnerUpdateCategory = async (req, res) => {
     const { categoryId, partnerId } = req.params;
     const {
       name,
+      pCategory,
       cityId,
       price,
       description,
       workExperience,
-      disable,
     } = req.body;
 
     // Validate IDs
@@ -1531,7 +1553,6 @@ exports.partnerUpdateCategory = async (req, res) => {
             price: price ?? category.price,
             description: description ?? category.description,
             workExperience: workExperience ?? category.workExperience,
-            disable: disable ?? category.disable,
             icon,
             banner: bannerArr,
             images: imagesArr,
@@ -1539,14 +1560,72 @@ exports.partnerUpdateCategory = async (req, res) => {
           },
         },
         { new: true },
-      )
-      .populate("pCategory", "name")
-      .populate("cityId", "cityName");
+      );
 
     return res.status(200).json({
       success: true,
       message: "Category updated successfully",
       data: updatedCategory,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Partner toggle disable/enable their own category
+exports.partnerToggleDisable = async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const partnerId = req.partner._id;
+
+    // Validate categoryId
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid categoryId",
+      });
+    }
+
+    const category = await categoryModel.findById(categoryId);
+
+    if (!category) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    // Verify ownership
+    if (category.partnerId.toString() !== partnerId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only toggle your own categories",
+      });
+    }
+
+
+
+    // Toggle disable status
+    const updatedCategory = await categoryModel.findByIdAndUpdate(
+      categoryId,
+      { $set: { disable: !category.disable } },
+      { new: true }
+    );
+
+    const message = updatedCategory.disable
+      ? "Category successfully disabled"
+      : "Category successfully enabled";
+
+    return res.status(200).json({
+      success: true,
+      message,
+      data: {
+        categoryId: updatedCategory._id,
+        disable: updatedCategory.disable,
+      },
     });
   } catch (error) {
     return res.status(500).json({
