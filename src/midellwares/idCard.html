@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Id Card</title>
+    <style>
+
+        html {
+                font-size: 55.5%;
+            }
+    
+            .container {
+                border-radius: .7rem;
+                margin: 1%;
+                padding: 1%;
+    
+            }
+            
+            .container {
+                justify-content: center;
+                display: flex;
+                justify-content: center;
+            }
+    
+            .Card {
+                width: 300px;
+                padding:1%;
+                align-items: center;
+                justify-content: center;
+                box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+                border: 1px solid rgb(224, 223, 223);
+                border-radius: 7px;
+            }
+            .card1{
+                display: flex; 
+                justify-content: center; 
+                gap: 1%; 
+                flex-direction: column; 
+                align-items: center;
+            }
+            .card2{
+                height: 100%;
+                width: 100%;
+                border-radius: 7px;
+            }
+            
+            .logo {
+                
+                padding: 1%;
+                height: 60px;
+                width: 60px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .card3{
+                color: brown;
+                font-size: 1.8rem;
+                font-style: normal;
+            }
+            
+            .img {
+                width: 100px;
+                height: 120px;
+                border: 1px solid black;
+            }
+            .card4{
+                color: rgb(38, 15, 95); 
+                font-size: 1.2rem; 
+                font-style: normal; 
+                font-weight: 600; 
+                align-items: center; 
+                display: flex; 
+                justify-content: center;
+            }
+            .card5{
+                background-color: #FA4A0C; 
+                width: 100%; 
+                align-items: center; 
+                display: flex; 
+                justify-content: center; 
+                display: flex;
+            }
+            .card6{
+                color: white; 
+                font-size: 1.4rem; 
+                font-style: normal;
+            }
+            .card7{
+                width: 100%;
+                align-items: center;
+                display: flex;
+                justify-content: center;
+                display: flex;
+                padding: 5px;
+            }
+            .card7>img{
+                height: 100%; 
+                width: 100%; 
+                border-radius: 50%;
+            }
+            
+            .card8{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+            }
+            .card8 > h2{
+                color: black; 
+                font-size: 1.8rem; 
+                font-style: normal
+            }
+            .card9{
+                padding: 5px; 
+                display: flex; 
+                flex-direction: column; 
+                
+            }
+            .card91{
+                display: flex; width: 100%;
+            }
+            .card92{
+                width: 35%;
+            }
+            .card92 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .card93{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+    
+            }
+            .card94{
+                display: flex; width: 100%;
+            }
+            .card95{
+                width: 35%;
+            }
+            .card95 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+    
+            }
+            .email{
+                width: 65%;
+            }
+            .card96{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+                white-space: nowrap; 
+                width: 100%; 
+                overflow: hidden;
+                text-overflow: ellipsis; 
+            }
+    
+            .card97{
+                display: flex; width: 100%;
+            }
+            .card98{
+                width: 40%;
+            }
+            .card98> h6 {
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .card99{
+                width: 65%;
+            }
+            .card99 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+            }
+            .card10{
+                display: flex; width: 100%;
+            }
+            .card111{
+                width: 35%;
+            }
+            .card111 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .card112{
+                width: 65%;
+            }
+            .card112 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+                flex-wrap: wrap;
+                display: flex;
+            }
+            .pincode{
+                display: flex; width: 100%; 
+            }
+            .pincode1{
+                width: 35%;
+            }
+            .pincode1 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .pincode2{
+                width: 65%;
+            }
+            .pincode2 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+            }
+            .contact{
+                width: 100%;
+                display: flex;
+                padding: 2%;
+                height: 1rem;
+                align-items: center;
+                margin-top: 3%;
+            }
+            .contact1{
+                width: 25%;
+            }
+            .contact1 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .contact2{
+                width: 75%;
+            }
+            .contact2 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+                /* flex-wrap: wrap;
+                display: flex; */
+            }
+            .address{
+                width: 100%;
+                display: flex;
+                padding: 3%;
+                height: 1rem;
+                align-items: center;
+            }
+            .address1{
+                width: 25%;
+            }
+            .address1 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+            }
+            .address2{
+                width: 75%;
+            }
+            .address2 > h6{
+                color: black;
+                font-size: 1.5rem;
+                font-style: normal;
+                margin: 6px;
+                font-weight: 500;
+                flex-wrap: wrap;
+                display: flex;
+    
+            }
+
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="Card">
+            <div class="card1">
+                <div class="logo">
+                    <img src="https://leadkart.in-maa-1.linodeobjects.com/${company.header_logo}"
+                        class="card2" />
+                </div>
+                <div>
+                    <h1>
+                        ${company.site_name}
+                    </h1>
+                    <p class="card4">
+                        SERVICES
+                    </p>
+                </div>
+            </div>
+
+            <div class="card5">
+                <h1 class="card6">
+                    ID CARD
+                </h1>
+            </div>
+
+            <div class="card7">
+                <div class="img">
+                    <img src=".../" />
+                </div>
+            </div>
+            <div class="card8">
+                <h2>
+                    ${data.userId.fullName}
+                </h2>
+            </div>
+
+            <div class="card9">
+                <div class="card91">
+                    <div class="card92">
+                        <h6>Partner Id :</h6>
+                    </div>
+                    <div style="width: 65%;">
+                        <h6 class="card93">
+                            sddfdeefdfrfrrrrrrrrr
+                        </h6>
+                    </div>
+
+
+                </div>
+                <div class="card94">
+                    <div class="card95">
+                        <h6>Email :</h6>
+                    </div>
+                    <div class="email">
+                        <h6 class="card96">
+                            ${data.userId.email}
+                        </h6>
+                    </div>
+
+
+                </div>
+                <div class="card97">
+                    <div class="card98">
+                        <h6>Phone Number :</h6>
+                    </div>
+                    <div class="card99">
+                        <h6>
+                            ${data.userId.phoneNumber}
+                        </h6>
+                    </div>
+
+
+                </div>
+                <div class="card10">
+                    <div class="card111">
+                        <h6>
+                            Address :
+                        </h6>
+                    </div>
+                    <div class="card112">
+                        <h6>
+                            ${data.address}
+                        </h6>
+                    </div>
+
+
+                </div>
+                <div class="pincode">
+                    <div class="pincode1">
+                        <h6>
+                            Pincode :
+                        </h6>
+                    </div>
+                    <div class="pincode2">
+                        <h6>
+                            ${data.pincode}
+                        </h6>
+                    </div>
+
+
+                </div>
+
+
+            </div>
+
+            <hr />
+            <div class="contact">
+
+
+
+                <div class="contact1">
+                    <h6>
+                        Contect Us:
+                    </h6>
+                </div>
+                <div class="contact2">
+                    <h6>
+                        ${company.phone}
+                    </h6>
+                </div>
+
+            </div>
+            <div class="address">
+                <div class="address1">
+                    <h6>
+                        Address :
+                    </h6>
+                </div>
+                <div class="address2">
+                    <h6>
+                        ${company.address}
+                    </h6>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

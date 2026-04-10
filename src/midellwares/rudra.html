@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Invoice</title>
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      td,
+      th {
+        text-align: left;
+        padding: 3px;
+      }
+
+      th {
+        border-top: 3px solid black;
+        border-bottom: 3px solid black;
+      }
+
+      #tablecont {
+        font-weight: 700;
+      }
+
+      @media (max-width: 500px) {
+        table {
+          width: 100%;
+        }
+
+        #tablecont {
+          width: 50px;
+        }
+
+        .main {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .main > div {
+          width: 100%;
+          margin-bottom: 10px;
+        }
+      }
+
+      @media (max-width: 425px) {
+        body {
+          width: 100%;
+        }
+
+        .container {
+          padding: 10px;
+        }
+
+        .main {
+          padding: 0;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="container" style="font-size: 10px">
+      <div style="text-align: center; font-weight: bolder; font-size: 20px">
+        Tax Invoice
+      </div>
+      <header
+        style="
+          display: flex;
+          border-bottom: 2px solid black;
+          justify-content: space-between;
+          padding: 1%;
+        "
+      >
+        <div>
+          <div style="font-weight: bold; font-size: 15px">
+            Sold By: EASYSOLUTIONSERVICES
+          </div>
+          <span style="font-weight: bold">Ship-from Address:</span>
+          <p style="width: 90%">${companyModel?.address}</p>
+          <span style="font-weight: bold">GSYIN -</span>
+          <div style="display: inline">${companyModel?.gst}</div>
+        </div>
+        <div style="border: dotted; height: 1%; padding: 3px">
+          <span style="font-weight: bold">Invoice Number : </span> # ${
+          data?._id }
+        </div>
+      </header>
+
+      <main
+        class="main"
+        style="display: flex; justify-content: space-between; padding: 1%"
+      >
+        <div>
+          <div style="font-weight: bold">
+            <span style="font-weight: bolder">Order ID:</span> ${ data?._id }
+          </div>
+          <div>
+            <span style="font-weight: bold">Order Date:</span
+            >${data?.updatedAt.toLocaleDateString()}
+          </div>
+          <div>
+            <span style="font-weight: bold">Invoice Date:</span>
+            ${data?.updatedAt.toLocaleDateString()}
+          </div>
+          <div><span style="font-weight: bold">PAN:</span> ---</div>
+          <div><span style="font-weight: bold">CIN:</span> ---</div>
+        </div>
+        <div>
+          <div style="font-weight: bold">Bill To</div>
+          <div style="font-weight: bold">${user?.fullName}</div>
+          <div style="width: 80%">
+            ${data?.address?.address},${ data?.address?.apartment
+            },${data?.address?.area},${data?.address?.landmark},${
+            data?.address?.city },${data?.address?.state}
+            ,(${data?.address?.pinCode} )
+          </div>
+          <div>
+            <span style="font-weight: bold">Phone:</span>+91 ${
+            user?.phoneNumber }
+          </div>
+        </div>
+        <div>
+          <div style="font-weight: bold">Ship To</div>
+          <div style="font-weight: bold">${user?.fullName}</div>
+          <div style="width: 60%">
+            ${data?.address?.address},${ data?.address?.apartment
+            },${data?.address?.area},${data?.address?.landmark},${
+            data?.address?.city },${data?.address?.state}
+            ,(${data?.address?.pinCode} )
+          </div>
+          <div>
+            <span style="font-weight: bold">Phone:</span>+91 ${
+            user?.phoneNumber }
+          </div>
+        </div>
+        <div>
+          <p style="width: 150px; text-align: left">
+            *Keep this invoice and manufacturer box for warranty purposes.
+          </p>
+        </div>
+      </main>
+      <div>Total items: ${product(data)?.quantity}</div>
+    </div>
+    <table
+      style="
+        border-bottom: 2px solid black;
+        font-size: smaller;
+        padding: 5px;
+        font-size: 10px;
+      "
+    >
+      <tr>
+        <th>S.no.</th>
+        <th>Title</th>
+        <th>Qty</th>
+        <th>Gross Amount ₹</th>
+        <th>Discount ₹</th>
+        <th>Taxable Value ₹</th>
+        ${ data?.checkState == true ? `
+        <th>CGST %</th>
+        <th>SGST %</th>
+        ` : `
+        <th>IGST %</th>
+        ` }
+        <th>Total ₹</th>
+        ${product(data)?.arr}
+      </tr>
+
+      <tr style="border-top: 2px solid black; font-weight: bold">
+        <td></td>
+        <td>Total :</td>
+        <td>${product(data)?.quantity}</td>
+        <td>${data?.orderTotal}</td>
+        <td>${data?.totalOfferDiscount ? data?.totalOfferDiscount : 0}</td>
+        <td>${data?.netAmount}</td>
+        ${ data?.checkState == true ? `
+        <td>${Math.ceil(data?.taxAmount / 2)}</td>
+        <td>${Math.ceil( data?.taxAmount / 2 )}</td>
+        ` : `
+        <td>${Math.ceil(data?.taxAmount)}</td>
+        ` }
+        <td>${data?.orderTotal}</td>
+      </tr>
+    </table>
+
+    <div style="text-align: right; border-bottom: 2px solid black">
+      <div>
+        <div style="font-size: 15px">
+          Grand Total
+          <span style="font-weight: bold; margin: 2%">
+            ₹ ${ data?.orderTotal }</span
+          >
+        </div>
+        <div>Easy Solution Serices Private Limited</div>
+        <div>
+          <img
+            src="https://leadkart.in-maa-1.linodeobjects.com/${
+                  companyModel?.signatory
+                }"
+            style="width: 100px; height: 50px"
+          />
+        </div>
+        <div>Authorized Signatory</div>
+      </div>
+    </div>
+
+    <div style="text-align: end; padding: 5px">
+      <div>
+        <img
+          src="https://leadkart.in-maa-1.linodeobjects.com/${
+              companyModel?.header_logo
+            }"
+          alt="logo"
+          width="140px"
+          height="80px"
+        />
+      </div>
+      <div style="font: normal">
+        <span style="display: block; font-size: 20px">Thank You!</span> for
+        shopping with us
+      </div>
+    </div>
+
+    <footer style="border-bottom: dotted; font-size: 10px; padding: 5px">
+      <p>
+        <i
+          ><span style="font-weight: bold; font-size: 1rem"
+            >Terms & Conditions E.& O.E. :
+          </span>
+          <ol style="font-size: 0.8rem">
+            <li>1. Goods once sold will not be taken back.</li>
+            <li>2. Payment within 7 days from the date of bill.</li>
+            <li>
+              3. Interest @18% p.a. will be charged if the payment is not made
+              within the stipulated time.
+            </li>
+            <li>4. Subject to Satna jurisdiction only.</li>
+            <li>
+              5. After order confirmation, we have a right to cancel the order
+              without giving any update to the customer about it, and the amount
+              paid by the customer will be refunded in the original payment mode
+              within seven working days.
+            </li>
+          </ol>
+        </i>
+      </p>
+      <div style="font-size: 15px; font-weight: 600">
+        Contact Us: 9329932726, 9329932727
+      </div>
+    </footer>
+  </body>
+</html>

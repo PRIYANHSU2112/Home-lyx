@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Wallet Hardcoded Topup Test</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  </head>
+
+  <body style="font-family: Arial; padding: 20px">
+    <h2>Wallet Topup (Hardcoded Test)</h2>
+
+    <button onclick="payNow()">Pay Now (₹100)</button>
+
+    <script>
+      // ✅ Hardcoded values
+      const API_BASE = "http://localhost:2000/api";
+      const TOKEN =
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyIjoiNjk1ZTJhNzQ4MDAxNjBlNDcyN2ExZDhlIiwiaWF0IjoxNzY4NTU4MTA0LCJleHAiOjE3NjkxNjI5MDR9.1gypYwtZVZyrFu4f1FR4TmyRKaSdc3s4buqC3MFBCLo"; // <-- paste your JWT token here
+      const AMOUNT = 100; // <-- hardcoded amount
+
+      async function payNow() {
+        try {
+          // 1) Create order
+          const orderRes = await fetch(`${API_BASE}/wallet/topup/create-order`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${TOKEN}`,
+            },
+            body: JSON.stringify({ amount: AMOUNT }),
+          });
+
+          const orderData = await orderRes.json();
+
+          if (!orderData.success) {
+            alert("Order Error: " + orderData.message);
+            console.log("❌ Order API Response:", orderData);
+            return;
+          }
+
+          const { razorpayOrderId, razorpayKey } = orderData.data;
+
+          console.log("✅ Order Created Successfully");
+          console.log("razorpayOrderId:", razorpayOrderId);
+          console.log("razorpayKey:", razorpayKey);
+
+          // 2) Razorpay checkout
+          const options = {
+            key: razorpayKey,
+            amount: AMOUNT * 100,
+            currency: "INR",
+            name: "Wallet Test",
+            description: "Hardcoded Wallet Topup",
+            order_id: razorpayOrderId,
+
+            handler: async function (response) {
+              // ✅ Print Razorpay response in console
+              console.log("✅ Razorpay Payment Success Response:", response);
+              console.log("razorpay_order_id:", response.razorpay_order_id);
+              console.log("razorpay_payment_id:", response.razorpay_payment_id);
+              console.log("razorpay_signature:", response.razorpay_signature);
+
+              // 3) Verify payment
+              const verifyRes = await fetch(`${API_BASE}/wallet/topup/verify`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${TOKEN}`,
+                },
+                body: JSON.stringify({
+                  razorpay_order_id: response.razorpay_order_id,
+                  razorpay_payment_id: response.razorpay_payment_id,
+                  razorpay_signature: response.razorpay_signature,
+                }),
+              });
+
+              const verifyData = await verifyRes.json();
+
+              // ✅ Print backend verify response too
+              console.log("✅ Verify API Response:", verifyData);
+
+              if (verifyData.success) {
+                alert("✅ Wallet Credited Successfully!");
+                console.log("Wallet Updated:", verifyData.data);
+              } else {
+                alert("❌ Verify Failed: " + verifyData.message);
+                console.log("❌ Verify Failed Response:", verifyData);
+              }
+            },
+          };
+
+          const rzp = new Razorpay(options);
+
+          rzp.on("payment.failed", function (response) {
+            alert("❌ Payment Failed!");
+            console.log("❌ Payment Failed Response:", response.error);
+          });
+
+          rzp.open();
+        } catch (err) {
+          console.log("❌ Frontend Error:", err);
+          alert("Something went wrong!");
+        }
+      }
+    </script>
+  </body>
+</html>

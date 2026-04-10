@@ -1,0 +1,41 @@
+[
+  {
+    "_id": "69c25840c2de3cd238333096",
+    "cityName": "Mumbai",
+    "cityId": 400001,
+    "disable": false,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        19.076,
+        72.8777
+      ]
+    }
+  },
+  {
+    "_id": "69c2600e74e05a1062449cc9",
+    "cityName": "Bhubneshawar",
+    "cityId": 751024,
+    "disable": false,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        20.2961,
+        85.8245
+      ]
+    }
+  },
+  {
+    "_id": "69ccb1ea80106f81b850e8e3",
+    "cityName": "Bhopal",
+    "cityId": 487002,
+    "disable": false,
+    "location": {
+      "type": "Point",
+      "coordinates": [
+        77.4126,
+        23.2599
+      ]
+    }
+  }
+]

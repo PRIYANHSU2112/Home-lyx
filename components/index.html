@@ -1,0 +1,55 @@
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Socket.IO Example</title>
+  <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script> 
+  <script>
+    // document.addEventListener("DOMContentLoaded", (event) => {
+      const socket = io('http://localhost:3000');
+      
+      socket.on('connect',(msg)=>{
+        console.log("ritesh")
+      });
+
+      // socket.on('connection', (data) => {
+      //   console.log("connection: ", data);
+      // });
+    // });
+  </script>
+</head>
+<body>
+  <h1>SERVER IS RUNNING PERFECTLY</h1>
+</body>
+</html> -->
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socket.io Chat</title>
+</head>
+<body>
+    <h1>Socket.io Chat</h1>
+    
+  
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script>
+        let socket = io("https://api.essindiaonline.com/");
+
+    
+      const msg ="Hoiiooo"
+     console.log(msg)
+
+        socket.on('connection', (msg) => {
+          console.log("Hoiiooo1",msg)
+        });
+
+
+    </script>
+</body>
+</html>

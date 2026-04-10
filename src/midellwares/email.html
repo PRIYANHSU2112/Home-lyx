@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>${contant}</title>
+        <style>
+            body {
+                background-color: #f0f0f0;
+                font-family: Arial, sans-serif;
+            }
+            .email-container {
+                border-radius: 10px;
+                margin: auto;
+                color: white;
+                max-width: 500px;
+                border: 1px solid #a13942;
+                background: linear-gradient(to bottom, #a13942, #600053);
+                text-align: center;
+            }
+            .email-container img {
+                width: 100px;
+                /* background-color: white; */
+                padding: 10px;
+                /* border-radius: 10px; */
+            }
+            .email-container .check-img {
+                width: 60px;
+                border-radius: 50%;
+            }
+            .email-container h1 {
+                margin: 0;
+                padding-top: 7px;
+            }
+            .email-container p {
+                margin: 0;
+            }
+            .email-container .contact-info {
+                padding: 10px 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <table class="email-container">
+            <tr>
+                <td style="text-align: left; padding: 10px;">
+                    <img src="icon/law_logo.png" alt="LOGO">
+                </td>
+            </tr>
+            <tr>
+                <td style="text-align: center; padding: 20px;">
+                    <img src="./rf_sucess_v3.gif" alt="LOGO" class="check-img">
+                    <h1>${contant}!</h1>
+                </td>
+            </tr>
+            <tr>
+                <td class="contact-info" style="text-align: center;">
+                    <p>📳 <strong>+91 ${commpanyData?.phone}</strong></p>
+                </td>
+            </tr>
+            <tr>
+                <td class="contact-info" style="text-align: center; padding-bottom: 50px;">
+                    <p>✉️ <strong>${commpanyData?.email}</strong></p>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>

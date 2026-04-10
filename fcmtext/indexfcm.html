@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>FCM Test</title>
+</head>
+<body>
+
+<h2>🔥 FCM Web Push Test</h2>
+
+<button id="genBtn">Generate FCM Token</button>
+<pre id="token"></pre>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
+
+  // 🔹 Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAi8b-x9ebZ0HarH1RUcwv91QTMGkhPqmQ",
+    authDomain: "homelyx-8901c.firebaseapp.com",
+    projectId: "homelyx-8901c",
+    messagingSenderId: "203942875646",
+    appId: "1:203942875646:web:6a389cc348c4c9fe5bb0af",
+  };
+
+  // 🔹 Init Firebase
+  const app = initializeApp(firebaseConfig);
+  const messaging = getMessaging(app);
+
+  // 🔹 REGISTER SERVICE WORKER (MOST IMPORTANT)
+  let swReg = null;
+  if ("serviceWorker" in navigator) {
+    swReg = await navigator.serviceWorker.register("./firebase-messaging-sw.js");
+    console.log("✅ Service Worker registered");
+  }
+
+  const btn = document.getElementById("genBtn");
+
+  btn.addEventListener("click", async () => {
+    try {
+      const permission = await Notification.requestPermission();
+      console.log("Permission:", permission);
+
+      if (permission !== "granted") {
+        alert("Permission denied");
+        return;
+      }
+
+      const token = await getToken(messaging, {
+        vapidKey: "BHjwRv3b4fDkyWDHQHEaMdAeNrbbr_Dtcua5-am2EDHRIzqjjHI5cizSxktwmx5vfNzDOzQCqQN2nrershYNWZg",
+        serviceWorkerRegistration: swReg,   // 🔥 CRITICAL LINE
+      });
+
+      console.log("FCM TOKEN:", token);
+      document.getElementById("token").innerText = token;
+
+    } catch (err) {
+      console.error("FCM ERROR:", err);
+      alert(err.message);
+    }
+  });
+
+  // Foreground notification
+  onMessage(messaging, (payload) => {
+    new Notification(payload.notification.title, {
+      body: payload.notification.body,
+    });
+  });
+</script>
+
+</body>
+</html>

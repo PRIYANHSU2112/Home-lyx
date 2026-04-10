@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Razorpay Order Model Test</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+
+<h2>Razorpay Order Test</h2>
+<button onclick="pay()">Pay Now</button>
+
+<script>
+async function pay() {
+
+  // ✅ BACKEND BASE URL (Point to your actual server port, e.g., 2000)
+  const BASE_URL = "http://192.168.29.17:2000/api";
+
+  // ✅ USER AUTH TOKEN
+  const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyIjoiNjk4MWU3OThmM2ZhOThjZDFjMTRmZWJmIiwiaWF0IjoxNzc1NTQxOTc0LCJleHAiOjE3ODAzODAzNzR9.d279mbancmYnjSPAPhlxZMJ8iFT38FArU4cmM7NJBQc";
+
+  // ✅ DATA FROM DB (OrderModel)
+  const APP_ORDER_ID = "69871a73fb905379bdc0cb8d";     // Order._id
+  const RAZORPAY_ORDER_ID = "order_SaWRo5k1O5FrKH";   // Order.razorpayOrderId
+  const AMOUNT = 40000;                              // Order.amount (₹)
+  const RAZORPAY_KEY = "rzp_test_Rfx6rVjyohb2Su";
+
+  const options = {
+    key: RAZORPAY_KEY,
+    amount: AMOUNT * 100, // paise
+    currency: "INR",
+    order_id: RAZORPAY_ORDER_ID,
+
+    name: "Test Store",
+    description: "Order Payment",
+
+    handler: async function (response) {
+      console.log("✅ Razorpay Response:", response);
+
+      // 🔐 VERIFY PAYMENT WITH BACKEND
+      try {
+        const verifyRes = await fetch(
+          `${BASE_URL}/eCommerce/order/verify-payment`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${TOKEN}`
+            },
+            body: JSON.stringify({
+              orderId: APP_ORDER_ID,                       // DB Order ID
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature
+            })
+          }
+        );
+
+        // Safely parse response (handle empty / non-JSON responses)
+        const contentType = verifyRes.headers.get("content-type") || "";
+        let data = null;
+
+        if (verifyRes.status === 204) {
+          data = {};
+        } else if (contentType.includes("application/json")) {
+          const text = await verifyRes.text();
+          try {
+            data = text ? JSON.parse(text) : {};
+          } catch (e) {
+            console.error("Failed to parse JSON from verify endpoint:", e, text);
+            data = { success: false, message: "Invalid JSON response from server" };
+          }
+        } else {
+          // Fallback: treat body as text
+          const text = await verifyRes.text();
+          data = { success: verifyRes.ok, message: text || (verifyRes.ok ? "OK" : "No response body") };
+        }
+
+        console.log("VERIFY RESPONSE:", data);
+
+        if (verifyRes.ok && data && data.success) {
+          alert("✅ PAYMENT VERIFIED & ORDER PAID");
+        } else {
+          alert(`❌ PAYMENT VERIFICATION FAILED: ${data && data.message ? data.message : "Unknown"}`);
+        }
+      } catch (err) {
+        console.error("Network/server error during payment verification:", err);
+        alert("❌ Payment verification failed: network/server error. Check console for details.");
+      }
+    },
+
+    prefill: {
+      name: "Tiya",
+      contact: "9999999999"
+    },
+
+    theme: {
+      color: "#3399cc"
+    }
+  };
+
+  const rzp = new Razorpay(options);
+  rzp.open();
+}
+</script>
+
+</body>
+</html>

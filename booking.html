@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Booking Razorpay Test</title>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body style="font-family: Arial; padding: 20px;">
+
+  <h2>Booking Razorpay Payment Test</h2>
+
+  <button onclick="payNow()" style="padding: 10px 20px; cursor: pointer;">
+    Pay Now
+  </button>
+
+  <pre id="logBox" style="margin-top:20px; background:#f4f4f4; padding:15px; border-radius:8px;"></pre>
+
+<script>
+  // ✅ HARD CODED VALUES (Change only these 3)
+  const API_BASE = "https://api.homelyx.framekarts.com/api/";
+  const TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJVc2VyIjoiNjk1ZTJhNzQ4MDAxNjBlNDcyN2ExZDhlIiwiaWF0IjoxNzY5MjQ3OTUwLCJleHAiOjE3Njk4NTI3NTB9.rY_IcP2oDFm80GRR9meWd-ZyQd87_gPyeWxYDszO568";
+  const BOOKING_ID = "697495aacc71dc7209ed25fa";
+
+  function log(msg, data = null) {
+    const logBox = document.getElementById("logBox");
+    const text = data ? `${msg}\n${JSON.stringify(data, null, 2)}\n\n` : `${msg}\n\n`;
+    console.log(msg, data || "");
+    logBox.textContent += text;
+  }
+
+  async function payNow() {
+    try {
+      log("🔄 Starting payment...");
+
+      // ✅ 1) Create Order API (Hardcoded URL)
+      const createOrderUrl = `${API_BASE}/booking/pay/razorpay/create-order/${BOOKING_ID}`;
+      log("📌 Create Order URL:", createOrderUrl);
+
+      const res = await fetch(createOrderUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${TOKEN}`
+        }
+      });
+
+      const data = await res.json();
+      log("✅ Create Order Response:", data);
+
+      if (!data.success) {
+        alert("❌ Create Order Failed: " + data.message);
+        return;
+      }
+
+      // ✅ HARD CODED OPTIONS
+      const options = {
+        key: data.data.razorpayKey,                 // from backend
+        order_id: data.data.razorpayOrderId,        // from backend
+        amount: data.data.amount * 100,             // amount in paise (backend gave rupees)
+        currency: data.data.currency,
+
+        name: "Service Booking Test",
+        description: "Booking Payment Test Mode",
+
+        prefill: {
+          name: "Test User",
+          email: "test@gmail.com",
+          contact: "9999999999"
+        },
+
+        handler: async function (response) {
+          try {
+            log("💰 Razorpay Payment Success:", response);
+
+            // ✅ 2) Verify API
+            const verifyUrl = `${API_BASE}/booking/pay/razorpay/verify`;
+            log("📌 Verify URL:", verifyUrl);
+
+            const verifyRes = await fetch(verifyUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${TOKEN}`
+              },
+              body: JSON.stringify({
+                bookingId: BOOKING_ID,
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+
+            const verifyData = await verifyRes.json();
+            log("✅ Verify Response:", verifyData);
+
+            if (verifyData.success) {
+              alert("✅ Payment Verified & Booking Confirmed!");
+            } else {
+              alert("❌ Verify Failed: " + verifyData.message);
+            }
+          } catch (err) {
+            log("❌ Verify Error:", err.message);
+            alert("❌ Verify API Failed. Check console/log.");
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            log("⚠️ Razorpay popup closed by user");
+          }
+        },
+
+        theme: { color: "#3399cc" }
+      };
+
+      // ✅ Open Razorpay Checkout
+      const rzp = new Razorpay(options);
+
+      rzp.on("payment.failed", function (response) {
+        log("❌ Payment Failed:", response.error);
+        alert("❌ Payment Failed: " + response.error.description);
+      });
+
+      rzp.open();
+
+    } catch (err) {
+      log("❌ Error:", err.message);
+      alert("❌ Failed to start payment. Check console/log.");
+    }
+  }
+</script>
+
+</body>
+</html>

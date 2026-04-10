@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        td, th {
+            text-align: left;
+            padding: 3px;
+        }
+
+        th {
+            border-top: 3px solid black;
+            border-bottom: 3px solid black;
+        }
+
+        #tablecont {
+            font-weight: 700;
+        }
+
+        @media (max-width: 500px) {
+            table {
+                width: 100%;
+            }
+
+            #tablecont {
+                width: 50px;
+            }
+
+            .main {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .main > div {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+        }
+
+        @media (max-width: 425px) {
+            body {
+                width: 100%;
+            }
+
+            .container {
+                padding: 10px;
+            }
+
+            .main {
+                padding: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container" style="font-size: 10px;">
+        <div style="text-align: center; font-weight: bolder; font-size: 20px">Tax Invoice</div>
+        <header style="display: flex; border-bottom: 2px solid black; justify-content: space-between; padding: 1%;">
+            <div>
+                <div style="font-weight: bold; font-size: 15px;">Sold By: EASYSOLUTIONSERVICES ,</div>
+                <span style="font-weight: bold;">Ship-from Address:</span>
+                <p style="width: 90%;">Indrapuri sector C</p>
+                <span style="font-weight: bold;">GSYIN -</span>
+                <div style="display: inline;">29AAXCS0655F1ZU</div>
+            </div>
+            <div style="border: dotted; height: 1%; padding: 3px;">
+                <span style="font-weight: bold;">Invoice Number : </span> #0001
+            </div>
+        </header>
+
+        <main class="main" style="display: flex; justify-content: space-between; padding: 1%;">
+            <div>
+                <div style="font-weight: bold;"><span style="font-weight: bolder;">Order ID:</span>1234567890-098765432</div>
+                <div><span style="font-weight: bold;">Order Date:</span> 16/05/2024</div>
+                <div><span style="font-weight: bold;">Invoice Date:</span> 16/05/2024</div>
+                <div><span style="font-weight: bold;">PAN:</span> aaxcs0655f</div>
+                <div><span style="font-weight: bold;">CIN:</span> U52399DL2016PTC299716</div>
+            </div>
+            <div>
+                <div style="font-weight: bold;">Bill To</div>
+                <div style="font-weight: bold;">Rudra Kumar</div>
+                <div style="width: 80%;">182, Park, Sonagiri, Bhopal 462022 MP</div>
+                <div><span style="font-weight: bold;">Phone:</span>1234567890</div>
+            </div>
+            <div>
+                <div style="font-weight: bold;">Ship To</div>
+                <div style="font-weight: bold;">Rudra Kumar</div>
+                <div style="width: 60%;">182, Park, Sonagiri, Bhopal 462022 MP</div>
+                <div><span style="font-weight: bold;">Phone:</span>1234567890</div>
+            </div>
+            <div>
+                <p style="width: 150px; text-align: left;">*Keep this invoice and manufacturer box for warranty purposes.</p>
+            </div>
+        </main>
+        <div>Total items: 001</div>
+    </div>
+
+    <table style="border-bottom: 2px solid black; font-size: smaller; padding: 5px; font-size: 10px;">
+        <tr>
+            <th>S.no.</th>
+            <th>Title</th>
+            <th>Qty</th>
+            <th>Gross Amount ₹</th>
+            <th>Discount ₹</th>
+            <th>Taxable Value ₹</th>
+            <th>GST %</th>
+            <th>Total ₹</th>
+        </tr>
+        <tr>
+            <td style="width: 2%;">1</td>
+            <td id="tablecont" style="width: 20%;">Dumbbells</td>
+            <td style="width: 5%;">2</td>
+            <td style="width: 5%;">10000</td>
+            <td style="width: 5%;">100</td>
+            <td style="width: 5%;">100</td>
+            <td style="width: 5%;">18 %</td>
+            <td style="width: 5%;">10000</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td id="tablecont" style="width: 20%;">Shipping Charge</td>
+            <td style="width: 5%;">1</td>
+            <td style="width: 5%;">40</td>
+            <td style="width: 5%;">--</td>
+            <td style="width: 5%;">--</td>
+            <td style="width: 5%;">--</td>
+            <td style="width: 5%;">40</td>
+        </tr>
+        <tr style="border-top: 2px solid black; font-weight: bold;">
+            <td></td>
+            <td>Total :</td>
+            <td>1</td>
+            <td>10040</td>
+            <td>100</td>
+            <td>100</td>
+            <td>18 %</td>
+            <td>10040</td>
+        </tr>
+    </table>
+
+    <div
+      style="
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 10px 5px 10px;
+
+        border-bottom: 2px solid black;
+      "
+    >
+      <div class="">
+        <img
+          src="https://pouch.jumpshare.com/preview/k2WkkTrDuxqi_HFlajE_FTHd141B7BmLcTo4df5Nrn4eQPnUQP-21xwmalhaNKRIon11VvCqygsb3-wf45GoCJ7OThsvfocR_2rsbJ8qqOk"
+          alt=""
+          style="width: 150px; height: auto"
+        />
+      </div>
+      <div style="text-align: right">
+        <div style="font-size: 15px">
+          Grand Total
+          <span style="font-weight: bold; margin: 2%"> ₹ 10040</span>
+        </div>
+        <div>Shreyash Retail Private Limited</div>
+        <div>
+          <img
+            src="./WhatsApp Image 2024-05-16 at 14.51.03_7317f4c4.jpg"
+            alt="logo"
+            style="width: 100px; height: 50px"
+          />
+        </div>
+        <div>Authorized Signatory</div>
+      </div>
+    </div>
+
+    <div style="text-align: end; padding: 5px;">
+        <div>
+            <img src="./logo.f33c4633b780f8cf8053.png" alt="logo" width="140px" height="80px">
+        </div>
+        <div style="font: normal;"><span style="display: block; font-size: 20px;">Thank You!</span> for shopping with us</div>
+    </div>
+
+    <footer style="border-bottom: dotted; font-size: 10px; padding: 5px;">
+        <p><i><span style="font-weight: bold; font-size: 1.0rem;">Terms & Conditions  E.& O.E. : </span>
+            <ol style="font-size: 0.8rem;">
+                <li>1. Goods once sold will not be taken back.</li>
+                <li>2. Payment within 7 days from the date of bill.</li>
+                <li>3. Interest @18% p.a. will be charged if the payment is not made within the stipulated time.</li>
+                <li>4. Subject to Satna jurisdiction only.</li>
+                <li>5. After order confirmation, we have a right to cancel the order without giving any update to the customer about it, and the amount paid by the customer will be refunded in the original payment mode within seven working days.</li>
+            </ol>
+        </i></p>
+        <div style="font-size: 15px; font-weight: 600;">Contact Us: 9329932726, 9329932727</div>
+    </footer>
+</body>
+
+</html>
