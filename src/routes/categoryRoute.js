@@ -129,7 +129,7 @@ router.get(
 
 // Partner creates category with pending status
 router.post(
-  "/partner/createCategory",
+  "/partner1/createCategory",
   upload.fields([
     { name: "icon", maxCount: 1 },
     { name: "banner" },
