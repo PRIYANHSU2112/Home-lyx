@@ -111,6 +111,10 @@ router.get(
   controller.getAllNullPcategory,
 );
 router.get(
+  "/getAllNullPcategory-partner",
+  controller.getAllNullPcategory,
+);
+router.get(
   "/getCategoryWithPcategory/:pCategory/:adminId",
   isCategory,
   controller.getCategoryWithPcategory,

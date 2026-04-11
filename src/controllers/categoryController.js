@@ -274,6 +274,7 @@ exports.createCategory = async (req, res) => {
       workExperience,
       status,
       disable,
+      adminCharge,
     } = req.body;
 
     let bannerArr = [];
@@ -341,6 +342,19 @@ exports.createCategory = async (req, res) => {
       );
     }
 
+    // -------- ADMIN CHARGE --------
+    // Only parent categories (pCategory=null) can have adminCharge set by admin
+    // Sub-categories auto-inherit adminCharge from their parent
+    let finalAdminCharge = 0;
+    if (!pCategory) {
+      // Parent category — admin can set adminCharge
+      finalAdminCharge = adminCharge ? Number(adminCharge) : 0;
+    } else {
+      // Sub-category — inherit adminCharge from parent
+      const parent = await categoryModel.findById(pCategory);
+      finalAdminCharge = parent?.adminCharge || 0;
+    }
+
     // -------- CREATE CATEGORY --------
     const category = await categoryModel.create({
       name,
@@ -356,6 +370,7 @@ exports.createCategory = async (req, res) => {
       images: imagesArr,
       videos: videosArr,
       slug,
+      adminCharge: finalAdminCharge,
 
       // ⭐ rating defaults
       totalRating: 0,
@@ -609,6 +624,7 @@ exports.updateCategory = async (req, res) => {
       workExperience,
       status,
       disable,
+      adminCharge,
     } = req.body;
 
     const categoryId = req.params.categoryId;
@@ -697,6 +713,16 @@ exports.updateCategory = async (req, res) => {
       );
     }
 
+    // -------- ADMIN CHARGE (only for parent categories) --------
+    const effectivePCategory = pCategory ?? category.pCategory;
+    let adminChargeUpdate = {};
+    if (!effectivePCategory) {
+      // Parent category — admin can update adminCharge
+      if (adminCharge !== undefined) {
+        adminChargeUpdate.adminCharge = Number(adminCharge);
+      }
+    }
+
     // -------- UPDATE CATEGORY --------
     const updatedCategory = await categoryModel
       .findByIdAndUpdate(
@@ -716,6 +742,7 @@ exports.updateCategory = async (req, res) => {
             images: imagesArr,
             videos: videosArr,
             slug,
+            ...adminChargeUpdate,
           },
         },
         { new: true },
@@ -1366,6 +1393,9 @@ exports.partnerCreateCategory = async (req, res) => {
       name.toLowerCase(),
     );
 
+    // -------- ADMIN CHARGE (inherit from parent category) --------
+    const finalAdminCharge = parentCategory.adminCharge || 0;
+
     // -------- CREATE CATEGORY (PENDING) --------
     const category = await categoryModel.create({
       name,
@@ -1379,6 +1409,7 @@ exports.partnerCreateCategory = async (req, res) => {
       images: imagesArr,
       videos: videosArr,
       slug,
+      adminCharge: finalAdminCharge,
       partnerId: new mongoose.Types.ObjectId(partnerId),
       categoryStatus: "pending", // Set to pending for partner-created categories
       totalRating: 0,

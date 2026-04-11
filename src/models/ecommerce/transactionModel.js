@@ -41,6 +41,12 @@ const transactionSchema = new mongoose.Schema(
       enum: ["UPI", "CARD", "NETBANKING", "WALLET", "COD", "ONLINE"],
     },
 
+    description: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
     status: {
       type: String,
       enum: ["CREATED", "SUCCESS", "FAILED", "REFUNDED","PENDING"],
@@ -56,7 +62,7 @@ const transactionSchema = new mongoose.Schema(
 
     walletPurpose: {
       type: String,
-      enum: ["TOPUP", "ORDER_PAYMENT", "BOOKING_PAYMENT", "REFUND", null],
+      enum: ["TOPUP", "ORDER_PAYMENT", "BOOKING_PAYMENT", "REFUND", "COMMISSION", null],
       default: null,
     },
 

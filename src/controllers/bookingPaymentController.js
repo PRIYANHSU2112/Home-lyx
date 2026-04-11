@@ -3,6 +3,7 @@ const bookingModel = require("../models/bookingModel");
 const transactionModel = require("../models/ecommerce/transactionModel");
 const { razorpay } = require("../../config/razorpay");
 const walletModel = require("../models/walletModel");
+const settlementService = require("../services/settlementService");
 const mongoose = require("mongoose");
 const {
   sendNotificationToUserOnServiceBooking,
@@ -198,6 +199,8 @@ exports.verifyBookingRazorpayPayment = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
+    await settlementService.settleBookingCommission(booking._id);
+
     await sendNotificationToUserOnServiceBooking(
       booking,
       booking.bookingStatus,
@@ -261,7 +264,9 @@ exports.payBookingByCOD = async (req, res) => {
           amount: booking.finalPayableAmount,
           currency: "INR",
           paymentMethod: "COD",
-          status: "PENDING",
+          status: "SUCCESS",
+          walletType: "DEBIT",
+          walletPurpose: "BOOKING_PAYMENT",
         },
       ],
       { session },
@@ -270,12 +275,15 @@ exports.payBookingByCOD = async (req, res) => {
     booking.transactionId = transaction[0]._id;
 
     booking.paymentMethod = "COD";
-    booking.paymentStatus = "PENDING";
+    booking.paymentStatus = "PAID";
     booking.bookingStatus = "UPCOMING";
+    booking.paidAt = new Date();
     await booking.save({ session });
 
     await session.commitTransaction();
     session.endSession();
+
+    await settlementService.settleBookingCommission(booking._id);
 
     await sendNotificationToUserOnServiceBooking(
       booking,
@@ -370,7 +378,7 @@ exports.payBookingByWallet = async (req, res) => {
           amount: amountToPay,
           currency: "INR",
           paymentMethod: "WALLET",
-          status: "CREATED",
+          status: "SUCCESS",
           walletType: "DEBIT",
           walletPurpose: "BOOKING_PAYMENT",
         },
@@ -399,6 +407,8 @@ exports.payBookingByWallet = async (req, res) => {
 
     await session.commitTransaction();
     session.endSession();
+
+    await settlementService.settleBookingCommission(booking._id);
 
     await sendNotificationToUserOnServiceBooking(
       booking,

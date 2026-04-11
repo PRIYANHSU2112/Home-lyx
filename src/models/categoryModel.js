@@ -100,6 +100,10 @@ const categoryModel = new mongoose.Schema(
         },
       },
     ],
+    adminCharge:{
+      type: Number,
+      default: 0,
+    },
     partnerId: {
       type: objectId,
       ref: "userModel",

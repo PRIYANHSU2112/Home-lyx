@@ -5,6 +5,8 @@ const taxModel = require("../models/taxModel");
 const isUsedSchema = require("../models/isUsedCouponModel");
 const walletModel = require("../models/walletModel");
 const transactionModel = require("../models/ecommerce/transactionModel");
+const partnerTransactionModel = require("../models/partnerTransaction");
+const settlementService = require("../services/settlementService");
 const userModel = require("../models/userModel"); 
 const cityModel = require("../models/cityModel");
 
@@ -15,6 +17,7 @@ const { calculatePlatformFee } = require("../helper/platformFee");
 const {
   sendNotificationToUserOnServiceBooking,
 } = require("./notificationController");
+const partnerProfileModel = require("../models/partnerProfileModel");
 
 exports.createBooking = async (req, res) => {
   try {
@@ -54,6 +57,13 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Service price not configured",
+      });
+    }
+
+    if (!subCategory.partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: "This service is not assigned to any partner",
       });
     }
 
@@ -197,6 +207,19 @@ exports.createBooking = async (req, res) => {
       finalPayableAmount = Math.round(finalPayableAmount + taxAmount);
     }
 
+    const parentCategory = subCategory.pCategory
+      ? await categoryModel.findById(subCategory.pCategory)
+      : null;
+
+    const adminChargePercent = Number(
+      parentCategory?.adminCharge ?? subCategory.adminCharge ?? 0,
+    );
+    const adminChargeAmount = Math.round(
+      (finalPayableAmount * adminChargePercent) / 100,
+    );
+    const partnerId = subCategory.partnerId || null;
+    console.log(partnerId)
+
     /* ---------- SERVICE DATE TIME ---------- */
     function buildServiceDateTime(serviceDate, serviceTimeSlot) {
       const startTime = serviceTimeSlot.split("-")[0].trim();
@@ -228,6 +251,9 @@ exports.createBooking = async (req, res) => {
       taxPercent,
       taxAmount,
       finalPayableAmount,
+      partnerId,
+      adminCharge: adminChargePercent,
+      adminChargeAmount,
       serviceDate,
       serviceTimeSlot,
       serviceLocation,
@@ -441,6 +467,316 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
+// Get all bookings for a partner
+exports.getPartnerBookings = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, status } = req.query;
+    const partnerId = req.params.partnerId;
+
+    let filter = { partnerId };
+
+    if (status) {
+      if (status === "PENDING") {
+        filter.partnerBookingStatus = "PENDING";
+      } else if (status === "ACCEPTED") {
+        filter.partnerBookingStatus = "ACCEPTED";
+      } else if (status === "REJECTED") {
+        filter.partnerBookingStatus = "REJECTED";
+      } else if (status === "COMPLETED") {
+        filter.bookingStatus = "COMPLETED";
+      } else if (status === "CANCELLED") {
+        filter.bookingStatus = "CANCELLED";
+      }
+    }
+
+    const bookings = await bookingModel
+      .find(filter)
+      .populate("userId", "name phoneNumber email")
+      .populate("subCategoryId", "name price")
+      .sort({ createdAt: -1 })
+      .limit(limit * 1)
+      .skip((page - 1) * limit);
+
+    const total = await bookingModel.countDocuments(filter);
+
+    return res.status(200).json({
+      success: true,
+      message: "Partner bookings retrieved successfully",
+      data: bookings,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / limit),
+        totalBookings: total,
+        hasNextPage: page * limit < total,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// Get booking detail for partner
+exports.getPartnerBookingDetail = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const partnerId = req.params.partnerId;
+
+    const booking = await bookingModel
+      .findOne({ _id: bookingId, partnerId })
+      .populate("userId", "name phoneNumber email")
+      .populate("subCategoryId", "name price description")
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found or not authorized",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Booking detail retrieved successfully",
+      data: booking,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+exports.partnerRespondBooking = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { action, reason } = req.body;
+
+    if (!["ACCEPT", "REJECT", "COMPLETE"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Action must be ACCEPT, REJECT or COMPLETE",
+      });
+    }
+
+    const booking = await bookingModel.findById(bookingId);
+
+    if (!booking) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+    const partner = await partnerProfileModel.findOne({ userId: req.user._id });
+
+    if (!booking.partnerId || booking.partnerId.toString() !== partner._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Not authorized for this partner booking",
+      });
+    }
+
+    if (booking.bookingStatus === "CANCELLED") {
+      return res.status(400).json({
+        success: false,
+        message: "Booking is already cancelled",
+      });
+    }
+
+    if (action === "ACCEPT") {
+      if (booking.partnerBookingStatus === "ACCEPTED") {
+        return res.status(400).json({
+          success: false,
+          message: "Booking already accepted",
+        });
+      }
+
+      booking.partnerBookingStatus = "ACCEPTED";
+      booking.bookingStatus = "UPCOMING";
+      booking.partnerAcceptedAt = new Date();
+      await booking.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Booking accepted by partner",
+        data: booking,
+      });
+    }
+
+    if (action === "COMPLETE") {
+      if (booking.partnerBookingStatus !== "ACCEPTED") {
+        return res.status(400).json({
+          success: false,
+          message: "Booking must be accepted before it can be completed",
+        });
+      }
+
+      if (booking.bookingStatus === "COMPLETED") {
+        return res.status(400).json({
+          success: false,
+          message: "Booking already completed",
+        });
+      }
+
+      if (booking.paymentStatus !== "PAID" && booking.paymentMethod !== "COD") {
+        return res.status(400).json({
+          success: false,
+          message: "Booking payment must be PAID before completion",
+        });
+      }
+
+      if(booking.paymentMethod === "COD"){
+        booking.paymentStatus = "PAID"; 
+        await booking.save();
+      }
+
+      const settlementResult = await settlementService.settleBookingCommission(
+        booking._id,
+      );
+
+      if (!settlementResult.success) {
+        return res.status(500).json({
+          success: false,
+          message: settlementResult.error || "Failed to settle booking commission",
+        });
+      }
+
+      booking.bookingStatus = "COMPLETED";
+      await booking.save();
+
+      return res.status(200).json({
+        success: true,
+        message: "Booking marked as completed and commission settled",
+        data: booking,
+        settlement: settlementResult,
+      });
+    }
+
+    if (!reason || reason.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required",
+      });
+    }
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      let refundAmount = 0;
+      let walletBalance = null;
+      let refundTransaction = null;
+
+      if (
+        booking.paymentStatus === "PAID" &&
+        ["RAZORPAY", "WALLET", "COD"].includes(booking.paymentMethod)
+      ) {
+        refundAmount = Number(booking.finalPayableAmount);
+
+        if (refundAmount > 0) {
+          let wallet = await walletModel.findOne(
+            { customerId: booking.userId },
+            null,
+            { session },
+          );
+
+          if (!wallet) {
+            const createdWallet = await walletModel.create(
+              [
+                {
+                  customerId: booking.userId,
+                  balance: refundAmount,
+                },
+              ],
+              { session },
+            );
+            wallet = createdWallet[0];
+          } else {
+            wallet.balance += refundAmount;
+            await wallet.save({ session });
+          }
+
+          walletBalance = wallet.balance;
+
+          const [txn] = await transactionModel.create(
+            [
+              {
+                bookingId: booking._id,
+                customerId: booking.userId,
+                amount: refundAmount,
+                currency: "INR",
+                paymentMethod: "WALLET",
+                status: "SUCCESS",
+                walletType: "CREDIT",
+                walletPurpose: "REFUND",
+              },
+            ],
+            { session },
+          );
+
+          refundTransaction = txn;
+          booking.paymentStatus = "REFUNDED";
+        }
+      }
+
+      const pendingCommissionTxn = await partnerTransactionModel.findOne({
+        bookingId: booking._id,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+        status: "PENDING",
+      });
+
+      if (pendingCommissionTxn) {
+        pendingCommissionTxn.status = "CANCELLED";
+        pendingCommissionTxn.description = `Partner rejected booking ${booking._id}`;
+        await pendingCommissionTxn.save({ session });
+      }
+
+      if (booking.commissionSettled) {
+        await settlementService.reverseBookingCommission(
+          booking._id,
+          `Partner rejected booking: ${reason}`,
+        );
+      }
+
+      booking.partnerBookingStatus = "REJECTED";
+      booking.partnerRejectReason = reason;
+      booking.bookingStatus = "CANCELLED";
+      booking.cancelledBy = "PARTNER";
+      booking.cancelReason = reason;
+      booking.cancelledAt = new Date();
+      await booking.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+
+      return res.status(200).json({
+        success: true,
+        message: "Booking rejected by partner",
+        refundAmount,
+        walletBalance,
+        data: booking,
+        transaction: refundTransaction,
+      });
+    } catch (nestedError) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(500).json({
+        success: false,
+        message: nestedError.message,
+      });
+    }
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // Cancel Booking By User
 
 exports.cancelBookingByUser = async (req, res) => {
@@ -480,7 +816,7 @@ exports.cancelBookingByUser = async (req, res) => {
     /* ================= REFUND LOGIC ================= */
     if (
       booking.paymentStatus === "PAID" &&
-      ["RAZORPAY", "WALLET"].includes(booking.paymentMethod)
+      ["RAZORPAY", "WALLET", "COD"].includes(booking.paymentMethod)
     ) {
       refundAmount = Number(booking.finalPayableAmount); // -
       // Number(booking.platformFee || 0);
@@ -533,6 +869,28 @@ exports.cancelBookingByUser = async (req, res) => {
     }
 
     /* ================= CANCEL BOOKING ================= */
+    if (booking.commissionSettled) {
+      await settlementService.reverseBookingCommission(
+        booking._id,
+        "Booking cancelled by user",
+      );
+    }
+
+    await partnerTransactionModel.findOneAndUpdate(
+      {
+        bookingId: booking._id,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+        status: "PENDING",
+      },
+      {
+        status: "CANCELLED",
+        description: `Booking cancelled by user ${booking._id}`,
+      },
+      { session },
+    );
+
+    booking.partnerBookingStatus = "REJECTED";
     booking.bookingStatus = "CANCELLED";
     await booking.save({ session });
 
@@ -658,7 +1016,7 @@ exports.cancelBookingByAdmin = async (req, res) => {
     /* ================= REFUND LOGIC ================= */
     if (
       booking.paymentStatus === "PAID" &&
-      ["RAZORPAY", "WALLET"].includes(booking.paymentMethod)
+      ["RAZORPAY", "WALLET", "COD"].includes(booking.paymentMethod)
     ) {
       refundAmount = Number(booking.finalPayableAmount);
 
@@ -709,6 +1067,28 @@ exports.cancelBookingByAdmin = async (req, res) => {
     }
 
     /* ================= CANCEL BOOKING ================= */
+    if (booking.commissionSettled) {
+      await settlementService.reverseBookingCommission(
+        booking._id,
+        `Booking cancelled by admin: ${cancelReason}`,
+      );
+    }
+
+    await partnerTransactionModel.findOneAndUpdate(
+      {
+        bookingId: booking._id,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+        status: "PENDING",
+      },
+      {
+        status: "CANCELLED",
+        description: `Booking cancelled by admin ${booking._id}`,
+      },
+      { session },
+    );
+
+    booking.partnerBookingStatus = "REJECTED";
     booking.bookingStatus = "CANCELLED";
     booking.cancelledBy = "ADMIN";
     booking.cancelReason = cancelReason;

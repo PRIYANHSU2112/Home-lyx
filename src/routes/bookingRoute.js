@@ -1,9 +1,27 @@
 const express = require("express");
 const router = express.Router();
 const bookingController = require("../controllers/bookingController");
-const { userRoute, adminRoute } = require("../../src/midellwares/auth");
+const { userRoute, adminRoute, partnerRoute } = require("../../src/midellwares/auth");
 
 router.post("/create-booking", userRoute, bookingController.createBooking);
+router.patch(
+  "/partner/respond/:bookingId",
+  partnerRoute,
+  bookingController.partnerRespondBooking,
+);
+
+// Partner booking management routes
+router.get(
+  "/partner/bookings/:partnerId",
+  partnerRoute,
+  bookingController.getPartnerBookings,
+);
+
+router.get(
+  "/partner/booking/:bookingId/:partnerId",
+  partnerRoute,
+  bookingController.getPartnerBookingDetail,
+);
 
 router.get("/user-bookings", userRoute, bookingController.getUserBookings);
 
@@ -41,7 +59,6 @@ router.patch(
   bookingController.updateBookingStatusByAdmin,
 );
 
-module.exports = router;
 
 // ADMIN CANCEL BOOKING
 router.put(
@@ -49,3 +66,7 @@ router.put(
   adminRoute,
   bookingController.cancelBookingByAdmin,
 );
+
+
+module.exports = router;
+

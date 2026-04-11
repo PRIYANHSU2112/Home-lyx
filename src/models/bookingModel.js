@@ -62,6 +62,43 @@ const bookingSchema = new mongoose.Schema(
       required: true,
     },
 
+    partnerId: {
+      type: ObjectId,
+      ref: "userModel",
+      default: null,
+    },
+
+    adminCharge: {
+      type: Number,
+      default: 0,
+    },
+
+    adminChargeAmount: {
+      type: Number,
+      default: 0,
+    },
+
+    commissionSettled: {
+      type: Boolean,
+      default: false,
+    },
+
+    partnerBookingStatus: {
+      type: String,
+      enum: ["PENDING", "ACCEPTED", "REJECTED"],
+      default: "PENDING",
+    },
+
+    partnerAcceptedAt: {
+      type: Date,
+      default: null,
+    },
+
+    partnerRejectReason: {
+      type: String,
+      default: null,
+    },
+
     serviceDate: {
       type: Date,
       required: true,
@@ -131,7 +168,7 @@ const bookingSchema = new mongoose.Schema(
 
     cancelledBy: {
       type: String,
-      enum: ["USER", "ADMIN", null],
+      enum: ["USER", "ADMIN", "PARTNER", null],
       default: null,
     },
 

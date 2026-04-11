@@ -2,6 +2,8 @@ const partnerWalletModel = require("../models/partnerWallet");
 const partnerTransactionModel = require("../models/partnerTransaction");
 const withdrawalRequestModel = require("../models/withdrawalRequest");
 const ecommerceOrderModel = require("../models/ecommerce/orderModel");
+const bookingModel = require("../models/bookingModel");
+const transactionModel = require("../models/ecommerce/transactionModel");
 const mongoose = require("mongoose");
 
 class SettlementService {
@@ -119,6 +121,237 @@ class SettlementService {
     }
   }
 
+  async settleBookingCommission(bookingId) {
+    try {
+      const booking = await bookingModel.findById(bookingId);
+      if (!booking) {
+        throw new Error(`Booking not found: ${bookingId}`);
+      }
+
+      if (!booking.partnerId) {
+        return {
+          success: true,
+          message: "No partner assigned to this booking",
+        };
+      }
+
+      if (booking.partnerBookingStatus !== "ACCEPTED") {
+        return {
+          success: false,
+          error: "Partner has not accepted this booking",
+        };
+      }
+
+      if (booking.paymentStatus !== "PAID") {
+        return {
+          success: false,
+          error: "Booking payment is not completed",
+        };
+      }
+
+      const transaction = await partnerTransactionModel.findOne({
+        bookingId,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+      });
+
+      if (!transaction) {
+        throw new Error(`Partner transaction not found for booking ${bookingId}`);
+      }
+
+      if (transaction.status === "SETTLED") {
+        return {
+          success: true,
+          message: "Booking commission already settled",
+          transaction,
+        };
+      }
+
+      const wallet = await this.getOrCreateWallet(booking.partnerId);
+      wallet.balance = (wallet.balance || 0) + (transaction.commissionAmount || 0);
+      wallet.totalEarning = (wallet.totalEarning || 0) + (transaction.commissionAmount || 0);
+      wallet.lastSettlementDate = new Date();
+      await wallet.save();
+
+      transaction.status = "SETTLED";
+      transaction.description = `Service booking commission settled for booking ${booking._id}`;
+      transaction.metadata = {
+        ...transaction.metadata,
+        settledAt: new Date(),
+      };
+      await transaction.save();
+
+      return {
+        success: true,
+        transaction,
+        message: "Booking commission settled successfully",
+      };
+    } catch (error) {
+      console.error("Error in settleBookingCommission:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+  async settleBookingCommission(bookingId) {
+    try {
+      const booking = await bookingModel.findById(bookingId);
+      if (!booking) {
+        throw new Error(`Booking not found: ${bookingId}`);
+      }
+      if (!booking.partnerId) {
+        return {
+          success: false,
+          error: "Booking has no assigned partner",
+        };
+      }
+      if (booking.paymentStatus !== "PAID") {
+        return {
+          success: false,
+          error: "Booking payment is not completed",
+        };
+      }
+      const existing = await partnerTransactionModel.findOne({
+        bookingId,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+      });
+      if (existing && existing.status === "COMPLETED") {
+        return {
+          success: true,
+          transaction: existing,
+          message: "Booking commission already settled",
+        };
+      }
+
+      const partnerShare = Number(booking.finalPayableAmount) - Number(booking.adminChargeAmount || 0);
+      const adminChargeAmount = Number(booking.adminChargeAmount || 0);
+      const adminChargePercent = Number(booking.adminCharge || 0);
+
+      const wallet = await this.getOrCreateWallet(booking.partnerId);
+      wallet.balance = (wallet.balance || 0) + partnerShare;
+      wallet.totalEarning = (wallet.totalEarning || 0) + partnerShare;
+      wallet.lastSettlementDate = new Date();
+      await wallet.save();
+
+      const transaction = new partnerTransactionModel({
+        partnerId: booking.partnerId,
+        bookingId,
+        orderType: "SERVICE",
+        amount: partnerShare,
+        commissionPercentage: adminChargePercent,
+        commissionAmount: adminChargeAmount,
+        netAmount: partnerShare,
+        transactionType: "COMMISSION_EARNED",
+        status: "COMPLETED",
+        description: `Partner earnings for booking ${booking._id}`,
+        metadata: {
+          paymentMethod: booking.paymentMethod,
+          bookingId: booking._id.toString(),
+        },
+      });
+      await transaction.save();
+
+      await transactionModel.create({
+        bookingId: booking._id,
+        amount: adminChargeAmount,
+        currency: "INR",
+        paymentMethod: booking.paymentMethod || "ONLINE",
+        status: "SUCCESS",
+        walletType: "CREDIT",
+        walletPurpose: "COMMISSION",
+      });
+
+      booking.commissionSettled = true;
+      await booking.save();
+
+      return {
+        success: true,
+        transaction,
+        message: "Booking commission settled successfully",
+      };
+    } catch (error) {
+      console.error("Error in settleBookingCommission:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
+
+  async reverseBookingCommission(bookingId, reason = "Booking cancelled") {
+    try {
+      const booking = await bookingModel.findById(bookingId);
+      if (!booking) {
+        throw new Error(`Booking not found: ${bookingId}`);
+      }
+
+      const existing = await partnerTransactionModel.findOne({
+        bookingId,
+        orderType: "SERVICE",
+        transactionType: "COMMISSION_EARNED",
+        status: "COMPLETED",
+      });
+
+      if (!existing) {
+        return {
+          success: true,
+          message: "No settled commission to reverse",
+        };
+      }
+
+      const wallet = await this.getOrCreateWallet(booking.partnerId);
+      wallet.balance = Math.max(0, (wallet.balance || 0) - (existing.amount || 0));
+      wallet.totalEarning = Math.max(0, (wallet.totalEarning || 0) - (existing.amount || 0));
+      await wallet.save();
+
+      existing.status = "CANCELLED";
+      existing.description = `Reversed partner earnings for booking ${booking._id}: ${reason}`;
+      await existing.save();
+
+      const reversalTx = new partnerTransactionModel({
+        partnerId: booking.partnerId,
+        bookingId,
+        orderType: "SERVICE",
+        amount: existing.amount,
+        commissionPercentage: existing.commissionPercentage,
+        commissionAmount: existing.commissionAmount,
+        netAmount: existing.amount,
+        transactionType: "REFUND_CREDIT",
+        status: "COMPLETED",
+        description: `Partner commission reversed for booking ${booking._id}`,
+        metadata: { reason, originalTransactionId: existing._id.toString() },
+      });
+      await reversalTx.save();
+
+      await transactionModel.create({
+        bookingId: booking._id,
+        amount: existing.commissionAmount,
+        currency: "INR",
+        paymentMethod: booking.paymentMethod || "ONLINE",
+        status: "CANCELLED",
+        walletType: "DEBIT",
+        walletPurpose: "COMMISSION",
+        description: `Admin commission reversed for booking ${booking._id}`,
+      });
+
+      booking.commissionSettled = false;
+      await booking.save();
+
+      return {
+        success: true,
+        reversalTransaction: reversalTx,
+        message: "Booking commission reversed successfully",
+      };
+    } catch (error) {
+      console.error("Error in reverseBookingCommission:", error);
+      return {
+        success: false,
+        error: error.message,
+      };
+    }
+  }
   /**
    * Complete pending settlements (move from pending to balance)
    * Typically called by scheduled cron job

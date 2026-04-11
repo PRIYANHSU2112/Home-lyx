@@ -7,7 +7,7 @@ const orderModel = new mongoose.Schema(
     product: [
       {
         productId: { type: objectId, ref: "eCommerceProductModel" },
-        variantId: { type: objectId, ref: "eCommerceProductVariantModel" },
+        variantId: { type: objectId },
         warranty: Number,
         price: Number,
         quantity: Number,

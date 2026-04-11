@@ -1699,11 +1699,24 @@ exports.getOrdersByPartner = async (req, res) => {
     const partnerId = req.partnerProfile._id;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
+    const { status, paymentStatus } = req.query;
+
+    const filter = { partnerId };
+
+    if (status) {
+      filter.status = status;
+    }
+
+    if (paymentStatus) {
+      filter.paymentStatus = paymentStatus;
+    }
 
     const [count, orders] = await Promise.all([
-      orderModel.countDocuments({ partnerId }),
+      orderModel.countDocuments(filter),
       orderModel
-        .find({ partnerId })
+        .find(filter)
+        .populate("product.productId", "title thumnail images features ")
+        .populate("product.variantId", "size color price")
         .sort({ createdAt: -1 })
         .skip((page - 1) * limit)
         .limit(limit),
