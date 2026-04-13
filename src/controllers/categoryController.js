@@ -1115,6 +1115,7 @@ exports.getCategoryWithPcategoryByUser = async (req, res) => {
     let length = await categoryModel.countDocuments({
       pCategory: req.params.pCategory,
       disable: false,
+      categoryStatus: "APPROVED",
     });
     let count = Math.ceil(length / 20);
     const getAllCategorys = await categoryModel

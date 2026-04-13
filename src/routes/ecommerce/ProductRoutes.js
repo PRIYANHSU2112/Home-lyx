@@ -20,6 +20,9 @@ router.get("/eCommerce/getAllProduct/:brandId", controller.getAllProductByBrandI
 router.get("/eCommerce/getAllProduct/category/:categoryId", controller.getAllProductByCategoryId);   // done
 router.get("/eCommerce/getAllProductByPartnerId", partnerRoute, controller.getAllProductByPartnerId);
 
+
+router.get("/eCommerce/getLowStockProductsByPartnerId", partnerRoute, controller.getLowStockProductsByPartnerId);
+
 // =================== Admin ================
 
 // ================= Post ==============

@@ -5,7 +5,7 @@ const withdrawalRequestModel = require("../models/withdrawalRequest");
 const mongoose = require("mongoose");
 
 /**
- * Get partner's wallet details
+ * Get partner's wallet details and monthly growth
  */
 exports.getMyWallet = async (req, res) => {
   try {
@@ -16,9 +16,8 @@ exports.getMyWallet = async (req, res) => {
       });
     }
 
-    const result = await settlementService.getPartnerWalletSummary(
-      req.partnerProfile._id,
-    );
+    const partnerId = req.partnerProfile._id;
+    const result = await settlementService.getPartnerWalletSummary(partnerId);
 
     if (!result.success) {
       return res.status(500).json({
@@ -27,10 +26,58 @@ exports.getMyWallet = async (req, res) => {
       });
     }
 
+    // --- Compute Monthly Earning Growth ---
+    const now = new Date();
+    const startOfCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfPreviousMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const endOfPreviousMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+
+    const [currentMonthData, previousMonthData] = await Promise.all([
+      partnerTransactionModel.aggregate([
+        {
+          $match: {
+            partnerId: mongoose.Types.ObjectId(partnerId),
+            transactionType: "COMMISSION_EARNED",
+            status: "SETTLED",
+            createdAt: { $gte: startOfCurrentMonth }
+          }
+        },
+        { $group: { _id: null, total: { $sum: "$commissionAmount" } } }
+      ]),
+      partnerTransactionModel.aggregate([
+        {
+          $match: {
+            partnerId: mongoose.Types.ObjectId(partnerId),
+            transactionType: "COMMISSION_EARNED",
+            status: "SETTLED",
+            createdAt: { $gte: startOfPreviousMonth, $lte: endOfPreviousMonth }
+          }
+        },
+        { $group: { _id: null, total: { $sum: "$commissionAmount" } } }
+      ])
+    ]);
+
+    const currentEarnings = currentMonthData.length > 0 ? currentMonthData[0].total : 0;
+    const previousEarnings = previousMonthData.length > 0 ? previousMonthData[0].total : 0;
+
+    let growthPercentage = 0;
+    if (previousEarnings === 0) {
+      growthPercentage = currentEarnings > 0 ? 100 : 0;
+    } else {
+      growthPercentage = ((currentEarnings - previousEarnings) / previousEarnings) * 100;
+    }
+    growthPercentage = Number(growthPercentage.toFixed(2));
+
     return res.status(200).json({
       success: true,
       data: result.wallet,
       pendingCommissions: result.pendingCommissions,
+      earningGrowth: {
+        currentMonthEarnings: currentEarnings,
+        previousMonthEarnings: previousEarnings,
+        growthPercentage: growthPercentage,
+        isPositive: growthPercentage >= 0
+      }
     });
   } catch (error) {
     console.error("Error in getMyWallet:", error);

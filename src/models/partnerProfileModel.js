@@ -30,6 +30,11 @@ const partnerProfileModel = new mongoose.Schema(
       },
       profileVerificetionCompleted: { type: Boolean, default: false },
     },
+    vendorType: {
+      type: String,
+      enum: ["ECOMMERCE", "SERVICE","NULL"],
+      default: "NULL",
+    },
     selfie: {
       image: { type: String, default: null },
       status: {

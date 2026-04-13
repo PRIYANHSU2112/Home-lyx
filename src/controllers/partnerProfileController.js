@@ -42,6 +42,7 @@ exports.createPartnerProfile = async (req, res) => {
       userId,
       remark,
       name,
+      vendorType,
       email,
     } = req.body;
 
@@ -102,6 +103,7 @@ exports.createPartnerProfile = async (req, res) => {
       longitude,
       latitude,
       remark,
+      vendorType,
       documents,
       selfie: { image: selfie },
       idDocument: { frontImage, backImage, addharNumber },
@@ -269,6 +271,7 @@ exports.updatePartnerProfile = async (req, res) => {
       longitude,
       latitude,
       addharNumber,
+      vendorType,
       userId,
       remark,
     } = req.body;
@@ -366,6 +369,7 @@ exports.updatePartnerProfile = async (req, res) => {
             address: address,
             pincode: pincode,
             userId: userId,
+            vendorType: vendorType,
             longitude: longitude,
             documents: documents,
             latitude: latitude,

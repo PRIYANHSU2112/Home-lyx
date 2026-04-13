@@ -58,7 +58,7 @@ const userModel = new mongoose.Schema(
     adminFcmToken: String,
     // superAdminFcmToken: String,
     subAdminFcmToken: String,
-    // partnerFcmToken: String,
+    partnerFcmToken: String,
     disable: {
       type: Boolean,
       default: false,

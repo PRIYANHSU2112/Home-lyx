@@ -13,6 +13,7 @@ router.get("/user-summary", optional, controller.getUserSummary); // done
 
 // router.get("/homePage-getEcommerce", controller.getHomeEcommerce); //done
 
-
+router.get("/Home-partner-order-stats", controller.getPartnerOrderStats);
+router.get("/Home-partner-booking-stats", controller.getPartnerBookingStats);
 
 module.exports = router;

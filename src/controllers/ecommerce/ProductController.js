@@ -395,7 +395,8 @@ exports.getAllProductByBrandId = async (req, res) => {
 
     const query = {
       brandId: brandId,
-      disable: false
+      disable: false,
+      status: "APPROVED"
     }
     const skip = (page - 1) * limit;
 
@@ -471,7 +472,8 @@ exports.getAllProductByCategoryId = async (req, res) => {
 
     const query = {
       categoryId,
-      disable: false
+      disable: false,
+      status: "APPROVED"
     }
     const skip = (page - 1) * limit;
 
@@ -1077,6 +1079,50 @@ exports.updateProductStatus = async (req, res) => {
       message: `Product ${status.toLowerCase()} successfully.`,
       data: updatedProduct,
     });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ======================== Get Low Stock Products ============================ ||
+
+exports.getLowStockProductsByPartnerId = async (req, res) => {
+  try {
+    const partnerId = req.partnerProfile?._id || req.partner?._id || req.params.partnerId;
+
+    if (!partnerId) {
+      return res.status(400).json({ success: false, message: "partnerId is required" });
+    }
+
+    const query = {
+      partnerId,
+      $or: [
+        { "variants.stock": { $lt: 50 } },
+        { stock: { $lt: 50 } }
+      ]
+    };
+
+    const products = await productModel.find(query)
+      .select("title thumnail variants stock brandName sku status disable")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Optionally filter only the specific low stock variants to be sent
+    const lowStockDetails = products.map(product => {
+      const lowStockVariants = product.variants.filter(v => v.stock < 50);
+      return {
+        ...product,
+        lowStockVariants
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Low stock products fetched successfully",
+      count: products.length,
+      data: lowStockDetails
+    });
+
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

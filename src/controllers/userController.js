@@ -550,7 +550,7 @@ exports.partnerLogin = async (req, res) => {
 
 exports.partnerVerify = async (req, res) => {
   try {
-    const { phoneNumber, otp, customerFcmToken } = req.body;
+    const { phoneNumber, otp, partnerFcmToken } = req.body;
 
     if (!phoneNumber) {
       return res.status(400).json({
@@ -611,8 +611,8 @@ exports.partnerVerify = async (req, res) => {
     user.otp = null;
     user.otpExpireAt = null;
 
-    if (customerFcmToken) {
-      user.customerFcmToken = customerFcmToken;
+    if (partnerFcmToken) {
+      user.partnerFcmToken = partnerFcmToken;
     }
 
     await user.save();

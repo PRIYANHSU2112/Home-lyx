@@ -49,6 +49,7 @@ exports.getHomeData = async (req, res) => {
     const products = await Product.find({
       categoryId: { $in: categories.map(c => c._id) },
       disable: false,
+      status: "APPROVED",c
     })
       .select("title subtitle variants features thumnail slug reviewRating brandName categoryId")
       .lean();
@@ -211,4 +212,89 @@ exports.getHomeService = async (req, res) => {
       error: error.message,
     });
   }
-}
+};
+
+const bookingModel = require("../models/bookingModel");
+
+// =================== Partner Dashboards Stats APIs =================== //
+
+exports.getPartnerOrderStats = async (req, res) => {
+  try {
+    const { partnerId } = req.query;
+    if (!partnerId) {
+      return res.status(400).json({ success: false, message: "partnerId is required in query" });
+    }
+
+    const [pending, accepted, completed, allOrders, lowStockProducts] = await Promise.all([
+      orderModel.countDocuments({ partnerId, status: "PENDING" }),
+      orderModel.countDocuments({ partnerId, status: "ACCEPTED"}),
+      orderModel.countDocuments({ partnerId, status: "DELIVERED" }),
+      orderModel.countDocuments({ partnerId }),
+      Product.find({
+        partnerId,
+        $or: [
+          { "variants.stock": { $lt: 50 } },
+          { stock: { $lt: 50 } }
+        ]
+      }).select("title thumnail variants stock brandName sku status disable").limit(5).lean()
+    ]);
+
+    const calculatePercent = (count, total) => total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pending: { count: pending, percentage: calculatePercent(pending, allOrders) },
+        accepted: { count: accepted, percentage: calculatePercent(accepted, allOrders) },
+        completed: { count: completed, percentage: calculatePercent(completed, allOrders) },
+        allOrders: { count: allOrders, percentage: 100 },
+        lowStockProducts
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.getPartnerBookingStats = async (req, res) => {
+  try {
+    const { partnerId } = req.query;
+    if (!partnerId) {
+      return res.status(400).json({ success: false, message: "partnerId is required in query" });
+    }
+
+    const [pending, accepted, completed, allOrders, upcomingBookings] = await Promise.all([
+      bookingModel.countDocuments({ partnerId, partnerBookingStatus: "PENDING" }),
+      bookingModel.countDocuments({ partnerId, partnerBookingStatus: "ACCEPTED"}),
+      bookingModel.countDocuments({ partnerId, bookingStatus: "COMPLETED" }),
+      bookingModel.countDocuments({ partnerId }),
+      bookingModel.find({ 
+        partnerId, 
+        partnerBookingStatus: "ACCEPTED", 
+        bookingStatus: { $nin: ["COMPLETED", "CANCELLED"] } 
+      })
+      .select("serviceDate serviceTimeSlot finalPayableAmount bookingStatus paymentStatus serviceLocation userId subCategoryId")
+      .populate("userId", "name phone image")
+      .populate("subCategoryId", "name icon")
+      .sort({ serviceDate: 1 })
+      .limit(5)
+      .lean()
+    ]);
+
+    const calculatePercent = (count, total) => total > 0 ? Number(((count / total) * 100).toFixed(2)) : 0;
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        pending: { count: pending, percentage: calculatePercent(pending, allOrders) },
+        accepted: { count: accepted, percentage: calculatePercent(accepted, allOrders) },
+        completed: { count: completed, percentage: calculatePercent(completed, allOrders) },
+        allOrders: { count: allOrders, percentage: 100 },
+        upcomingBookings
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};

@@ -5,7 +5,7 @@ const productModel = require("../../models/ecommerce/productModel");
 const addressModel = require("../../models/ecommerce/addressModel");
 const walletModel = require("../../models/walletModel")
 const { invoice } = require("../../midellwares/invoice");
-const {cancleInvoice}= require("../../midellwares/cancleInvoice");
+const { cancleInvoice } = require("../../midellwares/cancleInvoice");
 const { OrderEcommerce } = require("../../helper/status");
 const crypto = require("crypto");
 const { razorpay } = require("../../../config/razorpay");
@@ -16,6 +16,8 @@ const {
   sendNotificationAdminAndSubAdmin,
   sendNotificationUserOnStatusUpdate,
   sendNotificationToUserByPartner,
+  sendNotificationToPartnersOnOrder,
+  sendNotificationProductAccepted,
 } = require("../notificationController");
 const shippingModel = require("../../models/ecommerce/shippmentCharges");
 const {
@@ -209,7 +211,7 @@ exports.createOrder = async (req, res) => {
       totalOfferDiscount,
       address,
       product: items,
-      status: "PENDING", 
+      status: "PENDING",
       paymentMethod,
       paymentStatus: paymentMethod === "WALLET" ? "PAID" : "UNPAID",
       paymentSessionId,
@@ -346,12 +348,13 @@ exports.createOrder = async (req, res) => {
       }
       //  let code = await invoice(order[0]);
       await orderModel.findByIdAndUpdate(
-        masterOrder._id, 
-        { 
-        transactionId:transaction[0]._id , },
-        {new:true,session}
-        ); 
-      
+        masterOrder._id,
+        {
+          transactionId: transaction[0]._id,
+        },
+        { new: true, session }
+      );
+
       // // Update transactionId for sub-orders too
       // await orderModel.updateMany(
       //   { parentOrderId: masterOrder._id },
@@ -365,8 +368,13 @@ exports.createOrder = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    if (paymentMethod === "COD" || paymentMethod === "WALLET") {
-      await sendNotificationToUserByPartner(masterOrder, masterOrder.status, "ADMIN");
+    const allowedPaymentMethods = ["COD", "WALLET"];
+
+    if (allowedPaymentMethods.includes(paymentMethod)) {
+      Promise.all([
+        sendNotificationToUserByPartner(masterOrder, masterOrder.status, "ADMIN"),
+        sendNotificationToPartnersOnOrder(masterOrder)
+      ]);
     }
 
     return res.status(200).json({
@@ -392,7 +400,7 @@ exports.createOrder = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
   const session = await mongoose.startSession();
 
-   console.log(req.body);
+  console.log(req.body);
   try {
     const {
       razorpay_order_id,
@@ -443,15 +451,15 @@ exports.verifyPayment = async (req, res) => {
     const masterOrderId = order.parentOrderId || order._id;
 
     await orderModel.updateMany(
-      { 
+      {
         $or: [
-          { _id: masterOrderId }, 
+          { _id: masterOrderId },
           { parentOrderId: masterOrderId }
-        ] 
+        ]
       },
-      { 
-        paymentStatus: "PAID", 
-        status: "PENDING", 
+      {
+        paymentStatus: "PAID",
+        status: "PENDING",
         transactionId: transaction._id,
         transactionRef: razorpay_order_id
       },
@@ -461,14 +469,14 @@ exports.verifyPayment = async (req, res) => {
     // Sync all related sub-transactions in transactionModel
     await transactionModel.updateMany(
       { razorpayOrderId: razorpay_order_id, status: "CREATED" },
-      { 
-        status: "SUCCESS", 
-        razorpayPaymentId: razorpay_payment_id, 
-        razorpaySignature: razorpay_signature 
+      {
+        status: "SUCCESS",
+        razorpayPaymentId: razorpay_payment_id,
+        razorpaySignature: razorpay_signature
       },
       { session }
     );
-   
+
     //  await CartModel.deleteOne({ customerId: order.customerId });
 
     //  STOCK UPDATE + REFUND SAFETY
@@ -509,7 +517,10 @@ exports.verifyPayment = async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
-      await sendNotificationToUserByPartner(order, order.status, "ADMIN");
+      Promise.all([
+        sendNotificationToUserByPartner(order, order.status, "ADMIN"),
+        sendNotificationToPartnersOnOrder(order)
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -543,17 +554,17 @@ exports.verifyPayment = async (req, res) => {
 
     }
 
-      // const  code = await invoice(order);
-      // order.invoice = `HomelyxOrder/${code}.pdf`;
-  
-      // await orderModel.save();
+    // const  code = await invoice(order);
+    // order.invoice = `HomelyxOrder/${code}.pdf`;
 
-      // await sendNotificationToUserByPartner(order, order.status, "ADMIN");
+    // await orderModel.save();
 
-      // return res.status(200).json({
-      //   success: true,
-      //   message: "Payment verified & stock updated successfully",
-      // });
+    // await sendNotificationToUserByPartner(order, order.status, "ADMIN");
+
+    // return res.status(200).json({
+    //   success: true,
+    //   message: "Payment verified & stock updated successfully",
+    // });
 
   } catch (e) {
     return res.status(500).json({
@@ -644,8 +655,8 @@ exports.updateSingleStatus = async (req, res) => {
       if (check && req.body.status == "CANCELLED") {
         await updateVariantStockAndSold(
           req.Order.product,
-          +1, 
-          -1  
+          +1,
+          -1
         );
         statusUpdate = await orderModel.findOneAndUpdate(
           {
@@ -709,7 +720,7 @@ exports.updateSingleStatus = async (req, res) => {
           const subStatuses = sub.product.map(p => p.status);
           const uniqueSubStatuses = [...new Set(subStatuses)];
           sub.status = uniqueSubStatuses.length === 1 ? uniqueSubStatuses[0] : "MULTI_STATUS";
-          
+
           await sub.save();
         }
       } else {
@@ -936,7 +947,7 @@ exports.getOrderByCustomerId = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const search = req.query.search || "" ;
+    const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
     const baseQuery = { customerId: req.User._id };
@@ -1052,12 +1063,12 @@ exports.getOrderByCustomerId = async (req, res) => {
                 status: 1,
                 createdAt: 1,
                 taxAmount: 1,
-                paymentStatus:1,
-                netAmount:1,
-                transactionId:1,
-                transactionRef:1,
-                cancleBy:1,
-                reason:1,
+                paymentStatus: 1,
+                netAmount: 1,
+                transactionId: 1,
+                transactionRef: 1,
+                cancleBy: 1,
+                reason: 1,
                 products: 1,
                 productCount: 1,
                 address: 1,
@@ -1065,12 +1076,12 @@ exports.getOrderByCustomerId = async (req, res) => {
                   _id: 1,
                   name: 1,
                   email: 1,
-                  fullName:1,
-                  phoneNumber:1,
-                  userType:1,
-                  permissions:1,
-                  gender:1,
-                  image:1,
+                  fullName: 1,
+                  phoneNumber: 1,
+                  userType: 1,
+                  permissions: 1,
+                  gender: 1,
+                  image: 1,
                 },
               },
             },
@@ -1415,8 +1426,8 @@ exports.getAllOrdersForAdmin = async (req, res) => {
         .find({
           $or: [
             { fullName: { $regex: search, $options: "i" } },
-            { name:     { $regex: search, $options: "i" } },
-            { mobile:   { $regex: search, $options: "i" } },
+            { name: { $regex: search, $options: "i" } },
+            { mobile: { $regex: search, $options: "i" } },
           ],
         })
         .distinct("_id");
@@ -1680,6 +1691,17 @@ exports.updatePartnerOrderStatus = async (req, res) => {
 
         await masterOrder.save();
       }
+    }
+    
+    if (status === "ACCEPTED") {
+      const populatedOrder = await orderModel.findById(orderId).populate("product.productId", "title");
+      const productTitles = populatedOrder.product.map(p => p.productId?.title).filter(Boolean).join(", ");
+      
+      await sendNotificationProductAccepted({
+        userId: subOrder.customerId,
+        orderId: subOrder._id,
+        productTitle: productTitles
+      });
     }
 
     return res.status(200).json({

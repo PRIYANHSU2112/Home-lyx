@@ -18,18 +18,18 @@ if (!admin.apps.length) {
 async function sendPushNotification(message) {
   try {
 
-     if (!message?.tokens || message.tokens.length === 0) {
-    console.log("No FCM tokens provided");
-    return;
-  }
+    if (!message?.tokens || message.tokens.length === 0) {
+      console.log("No FCM tokens provided");
+      return;
+    }
 
     const response = await admin.messaging().sendEachForMulticast(message);
     response.responses.forEach((r, index) => {
-  if (!r.success) {
-    console.log("FCM ERROR CODE:", r.error.code);
-    console.log("FCM ERROR MESSAGE:", r.error.message);
-  }
-});
+      if (!r.success) {
+        console.log("FCM ERROR CODE:", r.error.code);
+        console.log("FCM ERROR MESSAGE:", r.error.message);
+      }
+    });
 
     console.log("FCM Response:", response);
     return response;
@@ -70,7 +70,7 @@ async function sendPushNotification(message) {
 //     .map((user) => adminSubAdminFields.map((field) => user[field]))
 //     .flat()
 //     .filter((token) => token !== undefined && token !== null);
-  
+
 //     // console.log(fcmToken);
 
 //    const order = await orderModel.findById(orderId);
@@ -96,24 +96,24 @@ async function sendPushNotification(message) {
 //     };
 //   });
 
-  // Log FCM tokens and send push notifications
-  // console.log("fcmToken", fcmToken);
+// Log FCM tokens and send push notifications
+// console.log("fcmToken", fcmToken);
 
-  // temperary commentout
-  // const message1 = {
-  //   notification: {
-  //     title: "Order",
-  //     body: `User Is ${status} This Order`,
-  //   },
-  //   data: {
-  //     orderId: orderId?._id,
-  //     type: "ECOM_ORDERED",
-  //   },
-  //   tokens: fcmToken,
-  // };
-  // if (fcmToken.length > 0) {
-  //   sendPushNotification(message1);
-  // }
+// temperary commentout
+// const message1 = {
+//   notification: {
+//     title: "Order",
+//     body: `User Is ${status} This Order`,
+//   },
+//   data: {
+//     orderId: orderId?._id,
+//     type: "ECOM_ORDERED",
+//   },
+//   tokens: fcmToken,
+// };
+// if (fcmToken.length > 0) {
+//   sendPushNotification(message1);
+// }
 //----------------------------
 //   // Insert notifications into the database (assuming a bulk insert method)
 //   await notificationModel.insertMany(notifications);
@@ -281,48 +281,48 @@ exports.sendRefundRequestNotification = async ({
   refId            // orderId OR bookingId (string)
 }) => {
   // try {
-    let fcmTokens = [];
+  let fcmTokens = [];
 
-    const user = await userModel.findById(userId).select("customerFcmToken");
+  const user = await userModel.findById(userId).select("customerFcmToken");
 
-    if (user?.customerFcmToken) {
-      fcmTokens.push(user.customerFcmToken);
-    }
+  if (user?.customerFcmToken) {
+    fcmTokens.push(user.customerFcmToken);
+  }
 
-    const isOrder = refundFor === "ECOMMERS";
+  const isOrder = refundFor === "ECOMMERS";
 
-    const title = "Refund Request Submitted";
+  const title = "Refund Request Submitted";
 
-    const message = isOrder
-      ? `Your refund request for Order ID ${refId} has been submitted successfully.`
-      : `Your refund request for Service ID ${refId} has been submitted successfully.`;
+  const message = isOrder
+    ? `Your refund request for Order ID ${refId} has been submitted successfully.`
+    : `Your refund request for Service ID ${refId} has been submitted successfully.`;
 
-    await notificationModel.create({
+  await notificationModel.create({
+    title,
+    message,
+    seen: false,
+    date: new Date(),
+    orderId: refId,
+    userId: userId,
+    userType: "CUSTOMER",
+    type: isOrder ? "ORDER_REFUND_REQUEST" : "SERVICE_REFUND_REQUEST",
+  });
+
+  const pushPayload = {
+    notification: {
       title,
-      message,
-      seen: false,
-      date: new Date(),
-      orderId: refId, 
-      userId: userId,
-      userType: "CUSTOMER",
+      body: message,
+    },
+    data: {
       type: isOrder ? "ORDER_REFUND_REQUEST" : "SERVICE_REFUND_REQUEST",
-    });
+      orderId: String(refId),
+    },
+    tokens: fcmTokens,
+  };
 
-    const pushPayload = {
-      notification: {
-        title,
-        body: message,
-      },
-      data: {
-        type: isOrder ? "ORDER_REFUND_REQUEST" : "SERVICE_REFUND_REQUEST",
-        orderId: String(refId),
-      },
-      tokens: fcmTokens,
-    };
-
-    if (fcmTokens.length > 0) {
-      await sendPushNotification(pushPayload);
-    }
+  if (fcmTokens.length > 0) {
+    await sendPushNotification(pushPayload);
+  }
 
   // } catch (error) {
   //   console.error("Refund notification error:", error);
@@ -461,7 +461,7 @@ exports.sendNotificationToAllUser = async (req, res) => {
 
 exports.sendNotificationToSingleUser = async (req, res) => {
   try {
-let fcmToken = [];
+    let fcmToken = [];
     if (!req.body.title) {
       return res.status(400).json({
         success: false,
@@ -505,15 +505,15 @@ let fcmToken = [];
     }
 
     console.log(fcmToken)
-    let payload  = {
-       tokens: fcmToken,
-  notification: {
-    title: req.body.title,
-    body: req.body.message,
-  },
+    let payload = {
+      tokens: fcmToken,
+      notification: {
+        title: req.body.title,
+        body: req.body.message,
+      },
     };
     if (fcmToken.length > 0) {
-      sendPushNotification(payload );
+      sendPushNotification(payload);
     }
     return res.status(200).json({
       success: true,
@@ -748,7 +748,7 @@ exports.sendNotificationToUserOnServiceBooking = async (
   try {
 
     // console.log(serviceOrder.userId)
-    
+
     if (!serviceOrder || !serviceOrder.userId) return;
 
     const fcmToken = [];
@@ -844,6 +844,120 @@ exports.sendNotificationToUserByPartner = async (order, status, partner) => {
 };
 
 
+// ============ Send Notification to All Partners on New Order ============ //
+const partnerProfileModel = require("../models/partnerProfileModel");
+
+exports.sendNotificationToPartnersOnOrder = async (order) => {
+  try {
+    const orderData = Array.isArray(order) ? order[0] : order;
+    if (!orderData) return;
+
+    // Fetch sub-orders for this master order
+    const subOrders = await orderModel.find({ parentOrderId: orderData._id }).lean();
+
+    if (!subOrders || subOrders.length === 0) {
+      console.log("No sub-orders found, skipping partner notification.");
+      return;
+    }
+
+    // Extract unique partnerIds from sub-orders
+    const partnerIds = [
+      ...new Set(
+        subOrders
+          .map((subOrder) => subOrder.partnerId?.toString())
+          .filter(Boolean)
+      ),
+    ];
+
+    if (partnerIds.length === 0) {
+      console.log("No valid partnerIds found in sub-orders, skipping partner notification.");
+      return;
+    }
+
+    console.log(`Sending order notification to ${partnerIds.length} partner(s)...`);
+
+    // Fetch partner profiles to get userIds
+    const partnerProfiles = await partnerProfileModel
+      .find({ _id: { $in: partnerIds } })
+      .select("userId name")
+      .lean();
+
+    if (!partnerProfiles.length) return;
+
+    const partnerUserIds = partnerProfiles.map((p) => p.userId).filter(Boolean);
+
+    // Fetch users from userModel to get FCM tokens
+    const partnerUsers = await userModel
+      .find({ _id: { $in: partnerUserIds } })
+      .select("customerFcmToken partnerFcmToken fullName")
+      .lean();
+
+    const fcmTokens = [];
+    const notifications = [];
+
+    for (const profile of partnerProfiles) {
+      const user = partnerUsers.find(
+        (u) => u._id.toString() === profile.userId?.toString()
+      );
+
+      if (!user) continue;
+
+      // Find the specific sub-order for this partner
+      const partnerSubOrder = subOrders.find(
+        (sub) => sub.partnerId?.toString() === profile._id.toString()
+      );
+
+      if (!partnerSubOrder) continue;
+
+      // Count products in this partner's sub-order
+      const partnerItemCount = partnerSubOrder.product ? partnerSubOrder.product.length : 0;
+
+      // Create in-app notification for this partner referencing their SPECIFIC sub-order
+      notifications.push({
+        title: "🛒 New Order Received!",
+        message: `You have received a new order with ${partnerItemCount} product(s). Order ID: ${partnerSubOrder.orderId || partnerSubOrder._id}`,
+        seen: false,
+        date: new Date(),
+        userId: user._id,
+        orderId: partnerSubOrder._id.toString(),
+        type: "ECOM_PARTNER_NEW_ORDER",
+        userType: "PARTNER",
+      });
+
+      // Pick FCM token from userModel (partnerFcmToken first, fallback to customerFcmToken)
+      const token = user.partnerFcmToken || user.customerFcmToken;
+      if (token) {
+        fcmTokens.push(token);
+      }
+    }
+
+    // Bulk insert in-app notifications
+    if (notifications.length > 0) {
+      await notificationModel.insertMany(notifications);
+      console.log(`Created ${notifications.length} partner notification(s).`);
+    }
+
+    // Send push notifications
+    if (fcmTokens.length > 0) {
+      await sendPushNotification({
+        notification: {
+          title: "🛒 New Order Received!",
+          body: `You have a new order! Order ID: ${orderData.orderId || orderData._id}`,
+        },
+        data: {
+          orderId: orderData._id.toString(),
+          type: "ECOM_PARTNER_NEW_ORDER",
+        },
+        tokens: fcmTokens,
+      });
+      console.log(`Sent push notification to ${fcmTokens.length} partner(s).`);
+    }
+  } catch (error) {
+    console.error("Partner order notification error:", error.message);
+  }
+};
+
+
 // exports.sendNotificationToPartnerByAdmin = async (order, status) => {
 //   // try {
 //   let fcmToken = [];
@@ -915,7 +1029,7 @@ exports.sendNotificationToUserByPartner = async (order, status, partner) => {
 //   if (fcmToken.length > 0) {
 //     sendPushNotification(message1);
 //   }
-  
+
 //   //   next();
 //   // } catch (error) {
 //   //   return res.status(500).json({ success: false, message: error.message });
@@ -1025,3 +1139,112 @@ exports.getAllNotifications = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 }
+
+// ============ Specific Notifications for Vendor Actions (Accept, Reject, Complete) ============ //
+
+exports.sendVendorAcceptNotification = async ({ userId, orderId, isService }) => {
+  try {
+    let fcmTokens = [];
+    const user = await userModel.findById(userId).select("customerFcmToken");
+    if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
+
+    const title = "Order Confirmed";
+    const message = isService 
+      ? "Your booking for this service is confirmed" 
+      : "Your order of this product is confirmed";
+
+    await notificationModel.create({
+      title, message, seen: false, date: new Date(),
+      orderId, userId, userType: "CUSTOMER",
+      type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED",
+    });
+
+    if (fcmTokens.length > 0) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED", orderId: String(orderId) },
+        tokens: fcmTokens,
+      });
+    }
+  } catch (error) { console.error("Accept notification error:", error.message); }
+};
+
+exports.sendVendorRejectNotification = async ({ userId, orderId, isService }) => {
+  try {
+    let fcmTokens = [];
+    const user = await userModel.findById(userId).select("customerFcmToken");
+    if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
+
+    const title = "Order Rejected";
+    const message = isService 
+      ? "Unfortunately, your booking for this service has been rejected by the vendor." 
+      : "Unfortunately, your order of this product has been rejected by the vendor.";
+
+    await notificationModel.create({
+      title, message, seen: false, date: new Date(),
+      orderId, userId, userType: "CUSTOMER",
+      type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED",
+    });
+
+    if (fcmTokens.length > 0) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED", orderId: String(orderId) },
+        tokens: fcmTokens,
+      });
+    }
+  } catch (error) { console.error("Reject notification error:", error.message); }
+};
+
+exports.sendVendorCompleteNotification = async ({ userId, orderId, isService }) => {
+  try {
+    let fcmTokens = [];
+    const user = await userModel.findById(userId).select("customerFcmToken");
+    if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
+
+    const title = "Order Completed";
+    const message = isService 
+      ? "Your service booking has been completed successfully. Thank you for choosing us!" 
+      : "Your order has been completed successfully. Thank you for shopping with us!";
+
+    await notificationModel.create({
+      title, message, seen: false, date: new Date(),
+      orderId, userId, userType: "CUSTOMER",
+      type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED",
+    });
+
+    if (fcmTokens.length > 0) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: isService ? "SERVICE_BOOKED" : "ECOM_ORDERED", orderId: String(orderId) },
+        tokens: fcmTokens,
+      });
+    }
+  } catch (error) { console.error("Complete notification error:", error.message); }
+};
+
+// ============ Specific Notification for Single Product Accept ============ //
+exports.sendNotificationProductAccepted = async ({ userId, orderId, productTitle }) => {
+  try {
+    let fcmTokens = [];
+    const user = await userModel.findById(userId).select("customerFcmToken");
+    if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
+
+    const title = "Order Confirmed 🎉";
+    const message = `Your order has been confirmed for this product: ${productTitle}`;
+
+    await notificationModel.create({
+      title, message, seen: false, date: new Date(),
+      orderId, userId, userType: "CUSTOMER",
+      type: "ECOM_ORDERED",
+    });
+
+    if (fcmTokens.length > 0) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: "ECOM_ORDERED", orderId: String(orderId) },
+        tokens: fcmTokens,
+      });
+    }
+  } catch (error) { console.error("Product Accept notification error:", error.message); }
+};
