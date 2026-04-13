@@ -483,7 +483,7 @@ exports.getPartnerBookings = async (req, res) => {
       } else if (status === "REJECTED") {
         filter.partnerBookingStatus = "REJECTED";
       } else if (status === "COMPLETED") {
-        filter.bookingStatus = "COMPLETED";
+        filter.partnerBookingStatus = "COMPLETED";
       } else if (status === "CANCELLED") {
         filter.bookingStatus = "CANCELLED";
       }
@@ -645,6 +645,7 @@ exports.partnerRespondBooking = async (req, res) => {
       }
 
       booking.bookingStatus = "COMPLETED";
+      booking.partnerBookingStatus = "COMPLETED";
       await booking.save();
 
       return res.status(200).json({

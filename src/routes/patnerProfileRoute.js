@@ -73,6 +73,8 @@ router.get(
   controller.getBypartnerProfileByUserId
 );
 
+router.get("/getPartnerAverageRating", controller.getPartnerAverageRating);
+
 // ===================== delete =============
 router.delete(
   "/deletepartnerProfiler/:PartnerProfileId",   

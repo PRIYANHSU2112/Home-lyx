@@ -649,3 +649,70 @@ exports.imageDownload = (req, res) => {
 
   });
 }
+
+// ====================== Average Rating API ========================= ||
+
+exports.getPartnerAverageRating = async (req, res) => {
+  try {
+    const { partnerId, type } = req.query;
+
+    if (!partnerId) {
+      return res.status(400).json({ success: false, message: "partnerId is required" });
+    }
+
+    if (!["ecommerce", "service"].includes(type)) {
+      return res.status(400).json({ success: false, message: "type must be 'ecommerce' or 'service'" });
+    }
+
+    let stats;
+    if (type === "ecommerce") {
+      const Product = require("../models/ecommerce/productModel");
+      const EcomReview = require("../models/ecommerce/reviewModel");
+
+      const products = await Product.find({ partnerId }, { _id: 1 });
+      const productIds = products.map(p => p._id);
+
+      stats = await EcomReview.aggregate([
+        { $match: { productId: { $in: productIds }, disable: false } },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+    } else {
+      const Booking = require("../models/bookingModel");
+      const ServiceReview = require("../models/reviewModel");
+
+      const bookings = await Booking.find({ partnerId }, { _id: 1 });
+      const bookingIds = bookings.map(b => b._id);
+
+      stats = await ServiceReview.aggregate([
+        { $match: { bookingId: { $in: bookingIds }, disable: false } },
+        {
+          $group: {
+            _id: null,
+            averageRating: { $avg: "$rating" },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+    }
+
+    const { averageRating = 0, count = 0 } = stats.length > 0 ? stats[0] : {};
+
+    return res.status(200).json({
+      success: true,
+      message: "Average rating fetched successfully",
+      data: {
+        averageRating: Number(averageRating.toFixed(1)),
+        count
+      }
+    });
+
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -2,6 +2,7 @@ const settlementService = require("../services/settlementService");
 const partnerWalletModel = require("../models/partnerWallet");
 const partnerTransactionModel = require("../models/partnerTransaction");
 const withdrawalRequestModel = require("../models/withdrawalRequest");
+const Bank = require("../models/bankModel");  
 const mongoose = require("mongoose");
 
 /**
@@ -154,7 +155,7 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    const { amount, bankDetails } = req.body;
+    const { amount } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
@@ -163,12 +164,24 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    if (!bankDetails || Object.keys(bankDetails).length === 0) {
+    const bankDetailsRecord = await Bank.findOne({ 
+      userId: req.partnerProfile.userId,
+      paymentType: "BANK"
+    }).select("+accountNumber");
+
+    if (!bankDetailsRecord) {
       return res.status(400).json({
         success: false,
-        message: "Bank details are required",
+        message: "Bank details not found. Please add bank account details first.",
       });
     }
+
+    const bankDetails = {
+      accountHolderName: bankDetailsRecord.accountHolderName,
+      accountNumber: bankDetailsRecord.accountNumber,
+      bankName: bankDetailsRecord.bankName,
+      ifscCode: bankDetailsRecord.ifscCode,
+    };
 
     const requiredBankFields = [
       "accountHolderName",
@@ -180,7 +193,7 @@ exports.requestWithdrawal = async (req, res) => {
       if (!bankDetails[field]) {
         return res.status(400).json({
           success: false,
-          message: `${field} is required`,
+          message: `Incomplete bank details. ${field} is missing in your saved bank data.`,
         });
       }
     }
