@@ -129,7 +129,7 @@ router.get(
 
 // Partner creates category with pending status
 router.post(
-  "/partner1/createCategory",
+  "/partner/createCategory",
   upload.fields([
     { name: "icon", maxCount: 1 },
     { name: "banner" },
@@ -168,7 +168,9 @@ router.put(
   controller.partnerUpdateCategory,
 );
 
-// Partner toggle disable/enable their own category
+
+
+// Partner toggle disable/enable their own category byby
 router.post(
   "/partner/toggleDisable/:categoryId",
   partnerRoute,
