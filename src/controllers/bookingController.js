@@ -619,7 +619,7 @@ exports.partnerRespondBooking = async (req, res) => {
           orderId: booking._id,
           isService: true,
         }),
-        sendNotificationToPartnerOnServiceAction(booking, "ACCEPT"),
+        // sendNotificationToPartnerOnServiceAction(booking, "ACCEPT"),
       ]);
 
       return res.status(200).json({

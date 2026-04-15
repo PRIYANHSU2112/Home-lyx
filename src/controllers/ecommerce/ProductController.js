@@ -636,19 +636,19 @@ exports.updateProduct = async (req, res) => {
       }
 
       // Validate variant sizes against category sizes
-      const categoryToCheck = categoryId ? categoryId : product.categoryId;
-      const category = await categoryModel.findById(categoryToCheck);
-      if (!category) {
-        return res.status(404).json({ success: false, message: "Category not found" });
-      }
+    //   const categoryToCheck = categoryId ? categoryId : product.categoryId;
+    //   const category = await categoryModel.findById(categoryToCheck);
+    //   if (!category) {
+    //     return res.status(404).json({ success: false, message: "Category not found" });
+    //   }
 
-      if (category.size && category.size.length > 0) {
-        const sizeValidationError = validateVariantSizesAgainstCategory(variants, category.size);
-        if (sizeValidationError) {
-          return res.status(400).json({ success: false, message: sizeValidationError });
-        }
-      }
-    }
+    //   if (category.size && category.size.length > 0) {
+    //     const sizeValidationError = validateVariantSizesAgainstCategory(variants, category.size);
+    //     if (sizeValidationError) {
+    //       return res.status(400).json({ success: false, message: sizeValidationError });
+    //     }
+    //   }
+    // }
 
     /* ================= SKU UNIQUE CHECK ================= */
     if (sku && sku !== product.sku) {
