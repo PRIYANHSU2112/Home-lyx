@@ -112,7 +112,7 @@ const categoryModel = new mongoose.Schema(
     categoryStatus: {
       type: String,
       enum: ["approved", "pending", "rejected"],
-      default: "approved",
+      default: "pending",
     },
     rejectionReason: {
       type: String,

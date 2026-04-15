@@ -770,19 +770,23 @@ exports.sendNotificationToUserOnServiceBooking = async (
   status,
 ) => {
   try {
+    console.log(`\n[USER NOTIF] sendNotificationToUserOnServiceBooking called | bookingId: ${serviceOrder?._id} | status: ${status}`);
 
-    // console.log(serviceOrder.userId)
-
-    if (!serviceOrder || !serviceOrder.userId) return;
+    if (!serviceOrder || !serviceOrder.userId) {
+      console.log("[USER NOTIF] ❌ Skipped — serviceOrder or userId missing");
+      return;
+    }
 
     const fcmToken = [];
 
-    // fresh customer fetch (safe)
     const customer = await userModel.findById(serviceOrder.userId);
-    // console.log(customer)
-    if (!customer?.customerFcmToken) return;
+    console.log(`[USER NOTIF] Customer found: ${customer ? customer._id : "NOT FOUND"} | FCM Token: ${customer?.customerFcmToken || "MISSING"}`);
 
-    fcmToken.push(customer.customerFcmToken);
+    if (!customer?.customerFcmToken) {
+      console.log("[USER NOTIF] ⚠️  No FCM token — in-app notification will still be saved");
+    } else {
+      fcmToken.push(customer.customerFcmToken);
+    }
 
     //  Save in-app notification
     await notificationModel.create({
@@ -795,22 +799,28 @@ exports.sendNotificationToUserOnServiceBooking = async (
       type: status, //  CREATED / CONFIRMED / COMPLETED
       userType: "CUSTOMER",
     });
+    console.log("[USER NOTIF] ✅ In-app notification saved to DB");
 
-    //  Push notification
-    await sendPushNotification({
-      notification: {
-        title: `Service Booking ${status}`,
-        body: `Your service booking has been ${status} successfully.`,
-      },
-      data: {
-        orderId: serviceOrder._id.toString(),
-        type: "SERVICE_BOOKED",
-      },
-      tokens: fcmToken,
-    });
+    if (fcmToken.length > 0) {
+      //  Push notification
+      await sendPushNotification({
+        notification: {
+          title: `Service Booking ${status}`,
+          body: `Your service booking has been ${status} successfully.`,
+        },
+        data: {
+          orderId: serviceOrder._id.toString(),
+          type: "SERVICE_BOOKED",
+        },
+        tokens: fcmToken,
+      });
+      console.log(`[USER NOTIF] ✅ Push notification sent to customer | token: ${fcmToken[0]}`);
+    } else {
+      console.log("[USER NOTIF] ⚠️  Push skipped — no FCM token available");
+    }
 
   } catch (error) {
-    console.error("Service booking notification error:", error.message);
+    console.error("[USER NOTIF] ❌ Service booking notification error:", error.message);
   }
 };
 
@@ -985,7 +995,12 @@ exports.sendNotificationToPartnersOnOrder = async (order) => {
 // ============ Notify Partner when a NEW Service Booking is assigned to them ============ //
 exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
   try {
-    if (!booking || !booking.partnerId) return;
+    console.log(`\n[PARTNER NOTIF] sendNotificationToPartnerOnNewBooking called | bookingId: ${booking?._id} | partnerId: ${booking?.partnerId}`);
+
+    if (!booking || !booking.partnerId) {
+      console.log("[PARTNER NOTIF] ❌ Skipped — booking or partnerId missing");
+      return;
+    }
 
     // partnerId in bookingModel is a partnerProfileModel _id
     const partnerProfile = await partnerProfileModel
@@ -993,7 +1008,12 @@ exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
       .select("userId name")
       .lean();
 
-    if (!partnerProfile?.userId) return;
+    console.log(`[PARTNER NOTIF] Partner profile found: ${partnerProfile ? JSON.stringify({ _id: partnerProfile._id, userId: partnerProfile.userId, name: partnerProfile.name }) : "NOT FOUND"}`);
+
+    if (!partnerProfile?.userId) {
+      console.log("[PARTNER NOTIF] ❌ Skipped — partner profile has no userId");
+      return;
+    }
 
     const partnerUser = await userModel
       .findById(partnerProfile.userId)
@@ -1001,6 +1021,7 @@ exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
       .lean();
 
     const token = partnerUser?.partnerFcmToken || partnerUser?.customerFcmToken;
+    console.log(`[PARTNER NOTIF] FCM Token: ${token || "MISSING (partnerFcmToken & customerFcmToken both null)"}`);
 
     const title = "📋 New Service Booking!";
     const message = `A new service booking has been assigned to you. Booking ID: ${booking._id}`;
@@ -1015,6 +1036,7 @@ exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
       type: "SERVICE_NEW_BOOKING",
       userType: "PARTNER",
     });
+    console.log("[PARTNER NOTIF] ✅ In-app notification saved to DB");
 
     if (token) {
       await sendPushNotification({
@@ -1022,9 +1044,12 @@ exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
         data: { type: "SERVICE_NEW_BOOKING", orderId: booking._id.toString() },
         tokens: [token],
       });
+      console.log(`[PARTNER NOTIF] ✅ Push notification sent to partner | token: ${token}`);
+    } else {
+      console.log("[PARTNER NOTIF] ⚠️  Push skipped — no FCM token found for partner");
     }
   } catch (error) {
-    console.error("Partner new booking notification error:", error.message);
+    console.error("[PARTNER NOTIF] ❌ Partner new booking notification error:", error.message);
   }
 };
 
@@ -1032,14 +1057,24 @@ exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
 // ============ Notify Partner on their own action (ACCEPT / REJECT / COMPLETE) ============ //
 exports.sendNotificationToPartnerOnServiceAction = async (booking, action) => {
   try {
-    if (!booking || !booking.partnerId) return;
+    console.log(`\n[PARTNER ACTION NOTIF] sendNotificationToPartnerOnServiceAction called | bookingId: ${booking?._id} | action: ${action}`);
+
+    if (!booking || !booking.partnerId) {
+      console.log("[PARTNER ACTION NOTIF] ❌ Skipped — booking or partnerId missing");
+      return;
+    }
 
     const partnerProfile = await partnerProfileModel
       .findById(booking.partnerId)
       .select("userId")
       .lean();
 
-    if (!partnerProfile?.userId) return;
+    console.log(`[PARTNER ACTION NOTIF] Partner profile userId: ${partnerProfile?.userId || "NOT FOUND"}`);
+
+    if (!partnerProfile?.userId) {
+      console.log("[PARTNER ACTION NOTIF] ❌ Skipped — no userId on partner profile");
+      return;
+    }
 
     const partnerUser = await userModel
       .findById(partnerProfile.userId)
@@ -1047,6 +1082,7 @@ exports.sendNotificationToPartnerOnServiceAction = async (booking, action) => {
       .lean();
 
     const token = partnerUser?.partnerFcmToken || partnerUser?.customerFcmToken;
+    console.log(`[PARTNER ACTION NOTIF] FCM Token: ${token || "MISSING"}`);
 
     const titleMap = {
       ACCEPT: "✅ Booking Accepted",
@@ -1072,6 +1108,7 @@ exports.sendNotificationToPartnerOnServiceAction = async (booking, action) => {
       type: "SERVICE_PARTNER_ACTION",
       userType: "PARTNER",
     });
+    console.log(`[PARTNER ACTION NOTIF] ✅ In-app notification saved to DB | action: ${action}`);
 
     if (token) {
       await sendPushNotification({
@@ -1079,9 +1116,12 @@ exports.sendNotificationToPartnerOnServiceAction = async (booking, action) => {
         data: { type: "SERVICE_PARTNER_ACTION", orderId: booking._id.toString() },
         tokens: [token],
       });
+      console.log(`[PARTNER ACTION NOTIF] ✅ Push sent to partner | action: ${action} | token: ${token}`);
+    } else {
+      console.log(`[PARTNER ACTION NOTIF] ⚠️  Push skipped — no FCM token for partner | action: ${action}`);
     }
   } catch (error) {
-    console.error("Partner action notification error:", error.message);
+    console.error("[PARTNER ACTION NOTIF] ❌ Partner action notification error:", error.message);
   }
 };
 
