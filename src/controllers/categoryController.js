@@ -1083,7 +1083,7 @@ exports.getCategoryWithPcategory = async (req, res) => {
         .populate("cityId")
         .populate("pCategory"),
     ]);
-        let count = Math.ceil(length / 20);
+    let count = Math.ceil(length / 20);
 
 
     // if (!getAllCategorys.length) {
@@ -1279,7 +1279,7 @@ exports.getAllSubCategory = async (req, res) => {
         .populate("pCategory", "name")
         .lean()
     ]);
-        let count = Math.ceil(length / 20);
+    let count = Math.ceil(length / 20);
 
     // if (!getAllCategorys.length) {
     //   return res.status(400).send({
@@ -1436,7 +1436,7 @@ exports.partnerCreateCategory = async (req, res) => {
 exports.partnerGetMyCategories = async (req, res) => {
   try {
     const { partnerId } = req.params;
-    const { page = 1, limit = 20, categoryStatus, disable,status } = req.query;
+    const { page = 1, limit = 20, categoryStatus, disable, status } = req.query;
 
     // Validate partnerId
     if (!mongoose.Types.ObjectId.isValid(partnerId)) {
@@ -1459,7 +1459,7 @@ exports.partnerGetMyCategories = async (req, res) => {
     if (disable !== undefined) {
       filter.disable = disable;
     }
-    if(status){
+    if (status) {
       filter.status = status;
     }
     const [total, categories] = await Promise.all([

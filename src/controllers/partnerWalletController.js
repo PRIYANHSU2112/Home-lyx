@@ -155,7 +155,7 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    const { amount } = req.body;
+    const { amount , BankId } = req.body;
 
     if (!amount || amount <= 0) {
       return res.status(400).json({
@@ -164,10 +164,8 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    const bankDetailsRecord = await Bank.findOne({ 
-      userId: req.partnerProfile.userId,
-      paymentType: "BANK"
-    }).select("+accountNumber");
+    const bankDetailsRecord = await Bank.findById(BankId);
+    console.log("Bank details record:", bankDetailsRecord); 
 
     if (!bankDetailsRecord) {
       return res.status(400).json({
@@ -176,24 +174,51 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    const bankDetails = {
-      accountHolderName: bankDetailsRecord.accountHolderName,
-      accountNumber: bankDetailsRecord.accountNumber,
-      bankName: bankDetailsRecord.bankName,
-      ifscCode: bankDetailsRecord.ifscCode,
-    };
+    // Ensure the bank belongs to the partner
+    if (bankDetailsRecord.userId.toString() !== req.partnerProfile.userId.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized access to bank details.",
+      });
+    }
 
-    const requiredBankFields = [
-      "accountHolderName",
-      "accountNumber",
-      "bankName",
-      "ifscCode",
-    ];
-    for (const field of requiredBankFields) {
+    let bankDetails;
+    let requiredFields;
+
+    if (bankDetailsRecord.paymentType === "BANK") {
+      bankDetails = {
+        accountHolderName: bankDetailsRecord.accountHolderName,
+        accountNumber: bankDetailsRecord.accountNumber,
+        bankName: bankDetailsRecord.bankName,
+        ifscCode: bankDetailsRecord.ifscCode,
+      };
+      requiredFields = [
+        "accountHolderName",
+        "accountNumber",
+        "bankName",
+        "ifscCode",
+      ];
+    } else if (bankDetailsRecord.paymentType === "UPI") {
+      bankDetails = {
+        upiId: bankDetailsRecord.upiId,
+        upiHolderName: bankDetailsRecord.upiHolderName,
+      };
+      requiredFields = [
+        "upiId",
+        "upiHolderName",
+      ];
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid payment type.",
+      });
+    }
+
+    for (const field of requiredFields) {
       if (!bankDetails[field]) {
         return res.status(400).json({
           success: false,
-          message: `Incomplete bank details. ${field} is missing in your saved bank data.`,
+          message: `Incomplete ${bankDetailsRecord.paymentType.toLowerCase()} details. ${field} is missing in your saved data.`,
         });
       }
     }

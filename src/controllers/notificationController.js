@@ -24,12 +24,42 @@ async function sendPushNotification(message) {
     }
 
     const response = await admin.messaging().sendEachForMulticast(message);
+    const failedTokens = [];
+
     response.responses.forEach((r, index) => {
       if (!r.success) {
         console.log("FCM ERROR CODE:", r.error.code);
         console.log("FCM ERROR MESSAGE:", r.error.message);
+
+        const errorCode = r.error?.code;
+        if (
+          errorCode === "messaging/invalid-registration-token" ||
+          errorCode === "messaging/registration-token-not-registered"
+        ) {
+          failedTokens.push(message.tokens[index]);
+        }
       }
     });
+
+    if (failedTokens.length > 0) {
+      await userModel.updateMany(
+        { customerFcmToken: { $in: failedTokens } },
+        { $unset: { customerFcmToken: 1 } }
+      );
+      await userModel.updateMany(
+        { partnerFcmToken: { $in: failedTokens } },
+        { $unset: { partnerFcmToken: 1 } }
+      );
+      await userModel.updateMany(
+        { adminFcmToken: { $in: failedTokens } },
+        { $unset: { adminFcmToken: 1 } }
+      );
+      await userModel.updateMany(
+        { subAdminFcmToken: { $in: failedTokens } },
+        { $unset: { subAdminFcmToken: 1 } }
+      );
+      console.log(`Cleaned up ${failedTokens.length} dead FCM tokens from database.`);
+    }
 
     console.log("FCM Response:", response);
     return response;
@@ -368,20 +398,14 @@ exports.getByUserId = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
 
-    const totalNotifications = await notificationModel.countDocuments(obj);
-    const totalPages = Math.ceil(totalNotifications / limit);
-
-    let check = await notificationModel
-      .find(obj)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    await notificationModel.updateMany(
-      { userId: req.params.userId, userType: req.query.userType },
-      { $set: { seen: true } },
-      { new: true }
-    );
+    const [totalNotifications, check] = await Promise.all([
+      notificationModel.countDocuments(obj),
+      notificationModel.find(obj).sort({ createdAt: -1 }).skip(skip).limit(limit),
+      notificationModel.updateMany(
+        { userId: req.params.userId, userType: req.query.userType },
+        { $set: { seen: true } }
+      )
+    ]);
 
     return res.status(200).json({
       success: true,
@@ -389,10 +413,10 @@ exports.getByUserId = async (req, res) => {
       data: check,
       pagination: {
         currentPage: page,
-        totalPages: totalPages,
-        totalNotifications: totalNotifications,
-        limit: limit,
-        hasNextPage: page < totalPages,
+        totalPages: Math.ceil(totalNotifications / limit),
+        totalNotifications,
+        limit,
+        hasNextPage: page < Math.ceil(totalNotifications / limit),
         hasPreviousPage: page > 1
       }
     });
@@ -1105,8 +1129,6 @@ exports.seenCount = async (req, res) => {
   }
 };
 
-
-
 exports.getAllNotifications = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -1149,8 +1171,8 @@ exports.sendVendorAcceptNotification = async ({ userId, orderId, isService }) =>
     if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
 
     const title = "Order Confirmed";
-    const message = isService 
-      ? "Your booking for this service is confirmed" 
+    const message = isService
+      ? "Your booking for this service is confirmed"
       : "Your order of this product is confirmed";
 
     await notificationModel.create({
@@ -1176,8 +1198,8 @@ exports.sendVendorRejectNotification = async ({ userId, orderId, isService }) =>
     if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
 
     const title = "Order Rejected";
-    const message = isService 
-      ? "Unfortunately, your booking for this service has been rejected by the vendor." 
+    const message = isService
+      ? "Unfortunately, your booking for this service has been rejected by the vendor."
       : "Unfortunately, your order of this product has been rejected by the vendor.";
 
     await notificationModel.create({
@@ -1203,8 +1225,8 @@ exports.sendVendorCompleteNotification = async ({ userId, orderId, isService }) 
     if (user && user.customerFcmToken) fcmTokens.push(user.customerFcmToken);
 
     const title = "Order Completed";
-    const message = isService 
-      ? "Your service booking has been completed successfully. Thank you for choosing us!" 
+    const message = isService
+      ? "Your service booking has been completed successfully. Thank you for choosing us!"
       : "Your order has been completed successfully. Thank you for shopping with us!";
 
     await notificationModel.create({

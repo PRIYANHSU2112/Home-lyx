@@ -23,7 +23,9 @@ router.get(
   bookingController.getPartnerBookingDetail,
 );
 
+
 router.get("/user-bookings", userRoute, bookingController.getUserBookings);
+
 
 router.get(
   "/get-booking/:bookingId",

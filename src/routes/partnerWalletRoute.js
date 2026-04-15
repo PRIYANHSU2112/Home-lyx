@@ -4,16 +4,16 @@ const partnerWalletController = require("../controllers/partnerWalletController"
 const { partnerRoute } = require("../midellwares/auth");
 
 // All routes require partner authentication
-router.use(partnerRoute);
+// Removed router.use(partnerRoute) to prevent middleware leakage down the Express stack
 
 // Wallet endpoints
-router.get("/my-wallet", partnerWalletController.getMyWallet);
-router.get("/partner-transactions", partnerWalletController.getTransactions);
-router.get("/withdrawal-requests", partnerWalletController.getWithdrawalRequests);
-router.get("/pending-commissions", partnerWalletController.getPendingCommissions);
-router.get("/stats", partnerWalletController.getWalletStats);
+router.get("/my-wallet", partnerRoute, partnerWalletController.getMyWallet);
+router.get("/partner-transactions", partnerRoute, partnerWalletController.getTransactions);
+router.get("/withdrawal-requests", partnerRoute, partnerWalletController.getWithdrawalRequests);
+router.get("/pending-commissions", partnerRoute, partnerWalletController.getPendingCommissions);
+router.get("/stats", partnerRoute, partnerWalletController.getWalletStats);
 
 // Withdrawal
-router.post("/request-withdrawal", partnerWalletController.requestWithdrawal);
+router.post("/request-withdrawal", partnerRoute, partnerWalletController.requestWithdrawal);
 
 module.exports = router;

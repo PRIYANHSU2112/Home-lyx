@@ -135,7 +135,7 @@ class SettlementService {
         };
       }
 
-      if (booking.partnerBookingStatus !== "ACCEPTED") {
+      if (booking.partnerBookingStatus !== "COMPLETED") {
         return {
           success: false,
           error: "Partner has not accepted this booking",
@@ -509,8 +509,8 @@ class SettlementService {
    */
   async processWithdrawalRequest(withdrawalRequestId, action, actionData = {}) {
     try {
-      if (!["APPROVED", "REJECTED"].includes(action)) {
-        throw new Error("Action must be APPROVED or REJECTED");
+      if (!["ACCEPTED", "REJECTED", "COMPLETED"].includes(action)) {
+        throw new Error("Action must be ACCEPTED, REJECTED or COMPLETED");
       }
 
       const withdrawalRequest = await withdrawalRequestModel.findById(withdrawalRequestId);
@@ -518,61 +518,101 @@ class SettlementService {
         throw new Error("Withdrawal request not found");
       }
 
-      if (withdrawalRequest.status !== "PENDING") {
-        throw new Error(`Cannot process withdrawal in ${withdrawalRequest.status} status`);
-      }
-
       const wallet = await partnerWalletModel.findOne({ partnerId: withdrawalRequest.partnerId });
       if (!wallet) {
         throw new Error("Partner wallet not found");
       }
 
-      if (action === "APPROVED") {
+      if (action === "ACCEPTED") {
+        if (withdrawalRequest.status !== "PENDING") {
+          throw new Error(`Cannot accept withdrawal in ${withdrawalRequest.status} status`);
+        }
+
+        // Just update status, no wallet changes yet
+        withdrawalRequest.status = "ACCEPTED";
+        withdrawalRequest.processedBy = actionData.processedBy;
+        withdrawalRequest.processedAt = new Date();
+        await withdrawalRequest.save();
+
+        // Update transaction
+        const transaction = await partnerTransactionModel.findOne({
+          withdrawalId: withdrawalRequestId,
+          transactionType: "WITHDRAWAL_REQUESTED",
+        });
+        if (transaction) {
+          transaction.description = `Withdrawal of ₹${withdrawalRequest.amount} accepted and awaiting payment`;
+          await transaction.save();
+        }
+
+        return {
+          success: true,
+          withdrawalRequest,
+          message: `Withdrawal of ₹${withdrawalRequest.amount} accepted`,
+        };
+      } else if (action === "COMPLETED") {
+        if (withdrawalRequest.status !== "ACCEPTED") {
+          throw new Error(`Cannot complete withdrawal in ${withdrawalRequest.status} status. Must be ACCEPTED first`);
+        }
+
+        if (!actionData.transactionRef) {
+          throw new Error("Payment reference (transaction ID) is required to complete withdrawal");
+        }
+
         // Reduce pending withdrawn and increase withdrawn
         wallet.pendingWithdrawn = Math.max(0, (wallet.pendingWithdrawn || 0) - withdrawalRequest.amount);
         wallet.totalWithdrawn = (wallet.totalWithdrawn || 0) + withdrawalRequest.amount;
         await wallet.save();
 
         // Update withdrawal request
-        withdrawalRequest.status = "APPROVED";
-        withdrawalRequest.processedBy = actionData.processedBy;
+        withdrawalRequest.status = "COMPLETED";
+        if (actionData.processedBy) {
+          withdrawalRequest.processedBy = actionData.processedBy;
+        }
         withdrawalRequest.processedAt = new Date();
-        withdrawalRequest.transactionRef = actionData.transactionRef || null;
+        withdrawalRequest.transactionRef = actionData.transactionRef;
         await withdrawalRequest.save();
 
         // Update transaction to COMPLETED
-        const transaction = await partnerTransactionModel.findOne({
+        const reqTransaction = await partnerTransactionModel.findOne({
           withdrawalId: withdrawalRequestId,
           transactionType: "WITHDRAWAL_REQUESTED",
         });
-        if (transaction) {
-          transaction.status = "COMPLETED";
-          transaction.description = `Withdrawal of ₹${withdrawalRequest.amount} approved on ${new Date().toLocaleDateString()}`;
-          await transaction.save();
+        if (reqTransaction) {
+          reqTransaction.status = "COMPLETED";
+          reqTransaction.description = `Withdrawal of ₹${withdrawalRequest.amount} completed on ${new Date().toLocaleDateString()}`;
+          await reqTransaction.save();
         }
 
-        // Create approval transaction record
-        const approvalTx = new partnerTransactionModel({
+        // Create completion transaction record
+        const completionTx = new partnerTransactionModel({
           partnerId: withdrawalRequest.partnerId,
           withdrawalId: withdrawalRequestId,
           amount: withdrawalRequest.amount,
           commissionAmount: withdrawalRequest.amount,
-          transactionType: "WITHDRAWAL_APPROVED",
+          transactionType: "WITHDRAWAL_COMPLETED",
           status: "COMPLETED",
-          description: `Withdrawal approved: ₹${withdrawalRequest.amount}`,
+          description: `Withdrawal completed: ₹${withdrawalRequest.amount}`,
           metadata: {
             withdrawalRequestId: withdrawalRequestId.toString(),
-            transactionRef: actionData.transactionRef || null,
+            transactionRef: actionData.transactionRef,
           },
         });
-        await approvalTx.save();
+        await completionTx.save();
 
         return {
           success: true,
           withdrawalRequest,
-          message: `Withdrawal of ₹${withdrawalRequest.amount} approved`,
+          message: `Withdrawal of ₹${withdrawalRequest.amount} completed`,
         };
-      } else {
+      } else if (action === "REJECTED") {
+        if (withdrawalRequest.status !== "PENDING" && withdrawalRequest.status !== "ACCEPTED") {
+          throw new Error(`Cannot reject withdrawal in ${withdrawalRequest.status} status`);
+        }
+
+        if (!actionData.rejectionReason) {
+            throw new Error("Rejection reason is required");
+        }
+
         // REJECTED - refund amount to balance and reduce pending withdrawn
         wallet.pendingWithdrawn = Math.max(0, (wallet.pendingWithdrawn || 0) - withdrawalRequest.amount);
         wallet.balance = (wallet.balance || 0) + withdrawalRequest.amount;
@@ -592,7 +632,7 @@ class SettlementService {
         });
         if (transaction) {
           transaction.status = "CANCELLED";
-          transaction.description = `Withdrawal rejected: ${actionData.rejectionReason || "No reason provided"}`;
+          transaction.description = `Withdrawal rejected: ${actionData.rejectionReason}`;
           await transaction.save();
         }
 

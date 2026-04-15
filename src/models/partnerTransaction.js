@@ -43,7 +43,7 @@ const partnerTransactionSchema = new mongoose.Schema(
     },
     transactionType: {
       type: String,
-      enum: ["COMMISSION_EARNED", "WITHDRAWAL_REQUESTED", "WITHDRAWAL_APPROVED", "WITHDRAWAL_REJECTED", "REFUND_CREDIT"],
+      enum: ["COMMISSION_EARNED", "WITHDRAWAL_REQUESTED", "WITHDRAWAL_COMPLETED", "WITHDRAWAL_REJECTED", "REFUND_CREDIT"],
       required: true,
     },
     status: {

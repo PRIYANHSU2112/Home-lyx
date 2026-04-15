@@ -16,6 +16,9 @@ const { calculatePlatformFee } = require("../helper/platformFee");
 
 const {
   sendNotificationToUserOnServiceBooking,
+  sendVendorAcceptNotification,
+  sendVendorRejectNotification,
+  sendVendorCompleteNotification
 } = require("./notificationController");
 const partnerProfileModel = require("../models/partnerProfileModel");
 
@@ -210,13 +213,15 @@ exports.createBooking = async (req, res) => {
     const parentCategory = subCategory.pCategory
       ? await categoryModel.findById(subCategory.pCategory)
       : null;
-
+    console.log("parentCategory",parentCategory)
     const adminChargePercent = Number(
       parentCategory?.adminCharge ?? subCategory.adminCharge ?? 0,
     );
+    console.log("adminChargesPercent", adminChargePercent)
     const adminChargeAmount = Math.round(
       (finalPayableAmount * adminChargePercent) / 100,
     );
+    console.log("adminChargeAmount",adminChargeAmount)
     const partnerId = subCategory.partnerId || null;
     console.log(partnerId)
 
@@ -599,6 +604,12 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.partnerAcceptedAt = new Date();
       await booking.save();
 
+      sendVendorAcceptNotification({
+        userId: booking.userId,
+        orderId: booking._id,
+        isService: true,
+      });
+
       return res.status(200).json({
         success: true,
         message: "Booking accepted by partner",
@@ -647,6 +658,12 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.bookingStatus = "COMPLETED";
       booking.partnerBookingStatus = "COMPLETED";
       await booking.save();
+
+      sendVendorCompleteNotification({
+        userId: booking.userId,
+        orderId: booking._id,
+        isService: true,
+      });
 
       return res.status(200).json({
         success: true,
@@ -750,6 +767,12 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.cancelReason = reason;
       booking.cancelledAt = new Date();
       await booking.save({ session });
+
+      sendVendorRejectNotification({
+        userId: booking.userId,
+        orderId: booking._id,
+        isService: true,
+      });
 
       await session.commitTransaction();
       session.endSession();

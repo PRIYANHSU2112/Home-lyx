@@ -119,7 +119,6 @@ exports.createCategory = async (req, res) => {
 
     const icon = req.files.icon[0].location;
 
-    // ✅ Slug generation
     const slug = generateCategorySlug(
       "category",
       name,

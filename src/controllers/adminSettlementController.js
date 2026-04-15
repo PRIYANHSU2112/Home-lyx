@@ -145,6 +145,7 @@ exports.getPartnerWallet = async (req, res) => {
 /**
  * Get all commissions
  */
+
 exports.getCommissions = async (req, res) => {
   try {
     const { page = 1, limit = 50, partnerId, status, startDate, endDate } = req.query;
@@ -174,15 +175,17 @@ exports.getCommissions = async (req, res) => {
       }
     }
 
-    const total = await partnerTransactionModel.countDocuments(query);
-    const commissions = await partnerTransactionModel
-      .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate("partnerId", "name email")
-      .populate("orderId", "orderId status")
-      .lean();
+    const [total, commissions] = await Promise.all([
+      partnerTransactionModel.countDocuments(query),
+      partnerTransactionModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate("partnerId", "name email")
+        .populate("orderId", "orderId status")
+        .lean(),
+    ]);
 
     // Calculate summary
     const summary = await partnerTransactionModel.aggregate([
@@ -284,15 +287,17 @@ exports.getWithdrawals = async (req, res) => {
       }
     }
 
-    const total = await withdrawalRequestModel.countDocuments(query);
-    const requests = await withdrawalRequestModel
-      .find(query)
-      .sort({ requestedAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate("partnerId", "name email phoneNumber")
-      .populate("processedBy", "fullName email")
-      .lean();
+    const [total, requests] = await Promise.all([
+      withdrawalRequestModel.countDocuments(query),
+      withdrawalRequestModel
+        .find(query)
+        .sort({ requestedAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate("partnerId", "name email phoneNumber")
+        .populate("processedBy", "fullName email")
+        .lean(),
+    ]);
 
     // Calculate summary
     const summary = await withdrawalRequestModel.aggregate([
@@ -332,12 +337,11 @@ exports.getWithdrawals = async (req, res) => {
 };
 
 /**
- * Approve withdrawal request
+ * Accept withdrawal request
  */
-exports.approveWithdrawal = async (req, res) => {
+exports.acceptWithdrawal = async (req, res) => {
   try {
     const { withdrawalId } = req.params;
-    const { transactionRef } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(withdrawalId)) {
       return res.status(400).json({
@@ -346,8 +350,55 @@ exports.approveWithdrawal = async (req, res) => {
       });
     }
 
-    const result = await settlementService.processWithdrawalRequest(withdrawalId, "APPROVED", {
-      processedBy: req.user._id,
+    const result = await settlementService.processWithdrawalRequest(withdrawalId, "ACCEPTED", {
+      processedBy: (req.user || req.admin || req.Admin)._id,
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        success: false,
+        message: result.error,
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: result.message,
+      data: result.withdrawalRequest,
+    });
+  } catch (error) {
+    console.error("Error in acceptWithdrawal:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+/**
+ * Complete withdrawal request
+ */
+exports.completeWithdrawal = async (req, res) => {
+  try {
+    const { withdrawalId } = req.params;
+    const { transactionRef } = req.body;
+
+    if (!transactionRef) {
+      return res.status(400).json({
+        success: false,
+        message: "Payment reference (transaction ID) is required",
+      });
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(withdrawalId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid withdrawal ID",
+      });
+    }
+
+    const result = await settlementService.processWithdrawalRequest(withdrawalId, "COMPLETED", {
+      processedBy: (req.user || req.admin || req.Admin)._id,
       transactionRef,
     });
 
@@ -364,7 +415,7 @@ exports.approveWithdrawal = async (req, res) => {
       data: result.withdrawalRequest,
     });
   } catch (error) {
-    console.error("Error in approveWithdrawal:", error);
+    console.error("Error in completeWithdrawal:", error);
     return res.status(500).json({
       success: false,
       message: error.message,
@@ -395,7 +446,7 @@ exports.rejectWithdrawal = async (req, res) => {
     }
 
     const result = await settlementService.processWithdrawalRequest(withdrawalId, "REJECTED", {
-      processedBy: req.user._id,
+      processedBy: (req.user || req.admin || req.Admin)._id,
       rejectionReason,
     });
 
@@ -453,17 +504,20 @@ exports.getAllTransactions = async (req, res) => {
         query.createdAt.$lte = end;
       }
     }
+    // Instead of sequential awaits, run both simultaneously
+    const [total, transactions] = await Promise.all([
+      partnerTransactionModel.countDocuments(query),
+      partnerTransactionModel
+        .find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .populate("partnerId", "name email")
+        .populate("orderId", "orderId")
+        .populate("withdrawalId", "amount status")
+        .lean()
+    ]);
 
-    const total = await partnerTransactionModel.countDocuments(query);
-    const transactions = await partnerTransactionModel
-      .find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .populate("partnerId", "name email")
-      .populate("orderId", "orderId")
-      .populate("withdrawalId", "amount status")
-      .lean();
 
     return res.status(200).json({
       success: true,
