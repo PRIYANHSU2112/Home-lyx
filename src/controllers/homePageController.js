@@ -49,7 +49,7 @@ exports.getHomeData = async (req, res) => {
     const products = await Product.find({
       categoryId: { $in: categories.map(c => c._id) },
       disable: false,
-      status: "APPROVED",c
+      status: "APPROVED",
     })
       .select("title subtitle variants features thumnail slug reviewRating brandName categoryId")
       .lean();
@@ -61,7 +61,6 @@ exports.getHomeData = async (req, res) => {
     }));
 
 
-    /* 5️⃣ Final Response */
     return res.status(200).json({
       success: true,
       message: "Home data fetched successfully",

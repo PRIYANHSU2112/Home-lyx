@@ -18,7 +18,9 @@ const {
   sendNotificationToUserOnServiceBooking,
   sendVendorAcceptNotification,
   sendVendorRejectNotification,
-  sendVendorCompleteNotification
+  sendVendorCompleteNotification,
+  sendNotificationToPartnerOnNewBooking,
+  sendNotificationToPartnerOnServiceAction,
 } = require("./notificationController");
 const partnerProfileModel = require("../models/partnerProfileModel");
 
@@ -264,6 +266,12 @@ exports.createBooking = async (req, res) => {
       serviceLocation,
       serviceDateTime,
     });
+
+    // Fire notifications (fire-and-forget, don't block response)
+    Promise.all([
+      sendNotificationToUserOnServiceBooking(booking, "CREATED"),
+      sendNotificationToPartnerOnNewBooking(booking),
+    ]);
 
     return res.status(201).json({
       success: true,
@@ -604,11 +612,15 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.partnerAcceptedAt = new Date();
       await booking.save();
 
-      sendVendorAcceptNotification({
-        userId: booking.userId,
-        orderId: booking._id,
-        isService: true,
-      });
+      // Notify user (booking confirmed) + partner (confirmation of their accept)
+      Promise.all([
+        sendVendorAcceptNotification({
+          userId: booking.userId,
+          orderId: booking._id,
+          isService: true,
+        }),
+        sendNotificationToPartnerOnServiceAction(booking, "ACCEPT"),
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -659,11 +671,15 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.partnerBookingStatus = "COMPLETED";
       await booking.save();
 
-      sendVendorCompleteNotification({
-        userId: booking.userId,
-        orderId: booking._id,
-        isService: true,
-      });
+      // Notify user (booking completed) + partner (confirmation of their complete)
+      Promise.all([
+        sendVendorCompleteNotification({
+          userId: booking.userId,
+          orderId: booking._id,
+          isService: true,
+        }),
+        sendNotificationToPartnerOnServiceAction(booking, "COMPLETE"),
+      ]);
 
       return res.status(200).json({
         success: true,
@@ -768,11 +784,15 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.cancelledAt = new Date();
       await booking.save({ session });
 
-      sendVendorRejectNotification({
-        userId: booking.userId,
-        orderId: booking._id,
-        isService: true,
-      });
+      // Notify user (booking rejected) + partner (confirmation of their reject)
+      Promise.all([
+        sendVendorRejectNotification({
+          userId: booking.userId,
+          orderId: booking._id,
+          isService: true,
+        }),
+        sendNotificationToPartnerOnServiceAction(booking, "REJECT"),
+      ]);
 
       await session.commitTransaction();
       session.endSession();

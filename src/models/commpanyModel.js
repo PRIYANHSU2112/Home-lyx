@@ -182,6 +182,10 @@ productDeliveryFee: {
       type: Number,
       default: 0,
     },
+    defaultTaxPercent: {
+      type: Number,
+      default: 6,
+    },
 minDelAmount: {
   type: Number,
       default: 0,

@@ -268,7 +268,7 @@ exports.billDetailEcommerce = async (req, res, next) => {
    try {
     const userId = req.params.customerId || req.body.customerId || req.User._id;
     
-    const [cart, taxPercentage, company] = await Promise.all([
+    const [cart, company] = await Promise.all([
       CartModel.findOne({ customerId: userId })
         .populate({
           path: "items.product",
@@ -279,8 +279,7 @@ exports.billDetailEcommerce = async (req, res, next) => {
           }
         })
         .lean(),
-      taxModel.findOne({ _id: "6958dd049e1c0d391bee89f7" }).select("taxPercent").lean(),
-      companyModel.findOne().select("productDeliveryFee minDelAmount").lean()
+      companyModel.findOne().select("productDeliveryFee minDelAmount defaultTaxPercent").lean()
     ]);
 
     if (cart) {
@@ -328,7 +327,7 @@ exports.billDetailEcommerce = async (req, res, next) => {
     let taxAmount = 0;
     let total = 0;
     let orderItems = [];
-    const taxPercent = taxPercentage?.taxPercent || 6;
+    const taxPercent = company?.defaultTaxPercent || 6;
 
     for (const item of cart.items) {
       const itemPrice = item.totalPrice;
@@ -482,6 +481,7 @@ exports.billDetailEcommerce = async (req, res, next) => {
     next(error);
   }
 };
+
 
 
 

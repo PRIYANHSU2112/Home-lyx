@@ -12,8 +12,6 @@ const { razorpay } = require("../../../config/razorpay");
 const couponUsed = require("../../models/isUsedCouponModel");
 const couponModel = require("../../models/couponModel");
 const {
-  sendNotificationAdminAndSubAdminAfterOrderCreate,
-  sendNotificationAdminAndSubAdmin,
   sendNotificationUserOnStatusUpdate,
   sendNotificationToUserByPartner,
   sendNotificationToPartnersOnOrder,

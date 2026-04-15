@@ -982,6 +982,110 @@ exports.sendNotificationToPartnersOnOrder = async (order) => {
 };
 
 
+// ============ Notify Partner when a NEW Service Booking is assigned to them ============ //
+exports.sendNotificationToPartnerOnNewBooking = async (booking) => {
+  try {
+    if (!booking || !booking.partnerId) return;
+
+    // partnerId in bookingModel is a partnerProfileModel _id
+    const partnerProfile = await partnerProfileModel
+      .findById(booking.partnerId)
+      .select("userId name")
+      .lean();
+
+    if (!partnerProfile?.userId) return;
+
+    const partnerUser = await userModel
+      .findById(partnerProfile.userId)
+      .select("partnerFcmToken customerFcmToken")
+      .lean();
+
+    const token = partnerUser?.partnerFcmToken || partnerUser?.customerFcmToken;
+
+    const title = "📋 New Service Booking!";
+    const message = `A new service booking has been assigned to you. Booking ID: ${booking._id}`;
+
+    await notificationModel.create({
+      title,
+      message,
+      seen: false,
+      date: new Date(),
+      userId: partnerProfile.userId,
+      orderId: booking._id.toString(),
+      type: "SERVICE_NEW_BOOKING",
+      userType: "PARTNER",
+    });
+
+    if (token) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: "SERVICE_NEW_BOOKING", orderId: booking._id.toString() },
+        tokens: [token],
+      });
+    }
+  } catch (error) {
+    console.error("Partner new booking notification error:", error.message);
+  }
+};
+
+
+// ============ Notify Partner on their own action (ACCEPT / REJECT / COMPLETE) ============ //
+exports.sendNotificationToPartnerOnServiceAction = async (booking, action) => {
+  try {
+    if (!booking || !booking.partnerId) return;
+
+    const partnerProfile = await partnerProfileModel
+      .findById(booking.partnerId)
+      .select("userId")
+      .lean();
+
+    if (!partnerProfile?.userId) return;
+
+    const partnerUser = await userModel
+      .findById(partnerProfile.userId)
+      .select("partnerFcmToken customerFcmToken")
+      .lean();
+
+    const token = partnerUser?.partnerFcmToken || partnerUser?.customerFcmToken;
+
+    const titleMap = {
+      ACCEPT: "✅ Booking Accepted",
+      REJECT: "❌ Booking Rejected",
+      COMPLETE: "🎉 Booking Completed",
+    };
+    const messageMap = {
+      ACCEPT: `You have accepted the booking. Booking ID: ${booking._id}`,
+      REJECT: `You have rejected the booking. Booking ID: ${booking._id}`,
+      COMPLETE: `You have marked the booking as completed. Booking ID: ${booking._id}`,
+    };
+
+    const title = titleMap[action] || "Booking Update";
+    const message = messageMap[action] || `Booking ${booking._id} status updated.`;
+
+    await notificationModel.create({
+      title,
+      message,
+      seen: false,
+      date: new Date(),
+      userId: partnerProfile.userId,
+      orderId: booking._id.toString(),
+      type: "SERVICE_PARTNER_ACTION",
+      userType: "PARTNER",
+    });
+
+    if (token) {
+      await sendPushNotification({
+        notification: { title, body: message },
+        data: { type: "SERVICE_PARTNER_ACTION", orderId: booking._id.toString() },
+        tokens: [token],
+      });
+    }
+  } catch (error) {
+    console.error("Partner action notification error:", error.message);
+  }
+};
+
+
 // exports.sendNotificationToPartnerByAdmin = async (order, status) => {
 //   // try {
 //   let fcmToken = [];

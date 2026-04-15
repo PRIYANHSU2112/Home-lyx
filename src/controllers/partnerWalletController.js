@@ -165,7 +165,7 @@ exports.requestWithdrawal = async (req, res) => {
     }
 
     const bankDetailsRecord = await Bank.findById(BankId);
-    console.log("Bank details record:", bankDetailsRecord); 
+    // console.log("Bank details record:", bankDetailsRecord); 
 
     if (!bankDetailsRecord) {
       return res.status(400).json({
@@ -181,6 +181,8 @@ exports.requestWithdrawal = async (req, res) => {
         message: "Unauthorized access to bank details.",
       });
     }
+
+    console.log("Bank details record:", bankDetailsRecord); 
 
     let bankDetails;
     let requiredFields;
@@ -214,14 +216,14 @@ exports.requestWithdrawal = async (req, res) => {
       });
     }
 
-    for (const field of requiredFields) {
-      if (!bankDetails[field]) {
-        return res.status(400).json({
-          success: false,
-          message: `Incomplete ${bankDetailsRecord.paymentType.toLowerCase()} details. ${field} is missing in your saved data.`,
-        });
-      }
-    }
+    // for (const field of requiredFields) {
+    //   if (!bankDetails[field]) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: `Incomplete ${bankDetailsRecord.paymentType.toLowerCase()} details. ${field} is missing in your saved data.`,
+    //     });
+    //   }
+    // }
 
     const result = await settlementService.createWithdrawalRequest(
       req.partnerProfile._id,
