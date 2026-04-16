@@ -302,7 +302,9 @@ exports.getAllProduct = async (req, res) => {
       limit = 10,
       brandName,
       categoryId,
-      disable
+      status,
+      disable,
+      productType,
     } = req.query;
 
     const query = {};
@@ -339,6 +341,18 @@ exports.getAllProduct = async (req, res) => {
 
     if (features) {
       query.features = { $in: features.split(",") };
+    }
+
+    if(status){
+      query.status = status;
+    }
+     
+    if(productType === "ADMIN"){
+       query.partnerId = null;
+    }
+
+    if(productType === "PARTNER"){
+      query.partnerId = { $ne: null };
     }
 
     if (finish || usage) {

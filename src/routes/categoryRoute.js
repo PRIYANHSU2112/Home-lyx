@@ -197,7 +197,7 @@ router.patch(
 router.patch(
   "/admin/rejectCategory/:categoryId/:adminId",
   isCategory,
-  controller.adminRejectCategory,
+  controller.adminRejectCategory, 
 );
 
 module.exports = router;
