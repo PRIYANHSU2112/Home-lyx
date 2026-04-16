@@ -53,7 +53,8 @@ exports.createContactUs = async (req, res) => {
       fullName: fullName,
       email: email,
       discription: discription,
-		mobile:mobile
+      mobile: mobile,
+      type: "CUSTOMER",
     });
     return res.status(201).json({
       success: true,
@@ -85,29 +86,29 @@ exports.getByContactUsId = async (req, res) => {
 
 exports.getAllContactUs = async (req, res) => {
   try {
-    let page = req.query.page;
+    let { page, type } = req.query;
     const startIndex = page ? (page - 1) * 20 : 0;
     const endIndex = startIndex + 20;
-    let length = await contactUsModel.countDocuments();
+
+    let filter = {};
+    if (type === "CUSTOMER" || type === "PARTNER") {
+      filter.type = type;
+    }
+
+    let length = await contactUsModel.countDocuments(filter);
     let count = Math.ceil(length / 20);
     let ContactUs = await contactUsModel
-      .find()
+      .find(filter)
       .sort({ createdAt: -1 })
       .skip(startIndex)
-      .limit(endIndex);
-    // if (!ContactUs.length) {
-    //   return res.status(400).json({
-    //     success: false,
-    //     message: "ContactUs Not Found",
-    //   });
-    // } else {
+      .limit(endIndex)
+      .populate("partnerId");
       return res.status(200).json({
         success: true,
         message: "All ContactUs Fatch Successfully...",
         data: ContactUs,
         page: count,
       });
-    // }
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -155,5 +156,50 @@ exports.deleteContactUs = async (req, res) => {
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ========================== Partner Create ContactUs ================================== ||
+
+exports.partnerCreateContactUs = async (req, res) => {
+  try {
+    let { fullName, email, discription, mobile } = req.body;
+    if (!fullName || !email || !discription || !mobile) {
+      throw {
+        status: 400,
+        message: !fullName
+          ? "fullName is Required..."
+          : !email
+          ? "email is Required..."
+          : !mobile
+          ? "mobile is Required..."
+          : "discription is Required...",
+      };
+    }
+
+    if (!validateMobileNumber(mobile)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid phone number",
+      });
+    }
+
+    let ContactUs = await contactUsModel.create({
+      fullName: fullName,
+      email: email,
+      discription: discription,
+      mobile: mobile,
+      type: "PARTNER",
+      partnerId: req.partner._id,
+    });
+    return res.status(201).json({
+      success: true,
+      message: "ContactUs Created Successfully...",
+      data: ContactUs,
+    });
+  } catch (error) {
+    return res
+      .status(error.status || 500)
+      .json({ success: false, message: error.message });
   }
 };

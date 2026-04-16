@@ -1,7 +1,7 @@
 const controller = require("../controllers/contactUsControler");
 const express = require("express");
 const router = express.Router();
-const { adminRoute } = require("../midellwares/auth");
+const { adminRoute, partnerRoute } = require("../midellwares/auth");
 router.param("ContactUsId", controller.getContactUsId);
 router.param("adminId", adminRoute);
 
@@ -27,4 +27,8 @@ router.get("/getAllContactUs/:adminId", controller.getAllContactUs); // done
 // ============== Delete ============
 router.delete("/deleteContactUs/:ContactUsId/:adminId", controller.deleteContactUs); // done
 
+// =============== Partner ============
+router.post("/partner/createContactUs", partnerRoute, controller.partnerCreateContactUs);
+
 module.exports = router;
+

@@ -548,6 +548,131 @@ exports.sendNotificationToSingleUser = async (req, res) => {
   }
 };
 
+
+exports.sendNotificationToAllPartners = async (req, res) => {
+  try {
+    let { title, message } = req.body;
+    let fcmTokens = [];
+
+    if (!title || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "title and message are required",
+      });
+    }
+
+    let partners = await userModel.find({
+      userType: "PARTNER"
+    });
+
+    if (partners.length > 0) {
+      const notifications = partners.map(partner => {
+        const token = partner.partnerFcmToken || partner.customerFcmToken;
+        if (token) fcmTokens.push(token);
+
+        return {
+          title,
+          message,
+          seen: false,
+          date: new Date(),
+          userId: partner._id,
+          userType: "PARTNER",
+        };
+      });
+
+      await notificationModel.insertMany(notifications);
+    }
+
+    if (fcmTokens.length > 0) {
+      let payload = {
+        tokens: [...new Set(fcmTokens)], // Unique tokens
+        notification: { title, body: message },
+        data: { type: "GENERAL_NOTIFICATION" }
+      };
+      sendPushNotification(payload);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: `Notification sent to ${partners.length} partners successfully`,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.sendNotificationToSinglePartner = async (req, res) => {
+  try {
+    let { title, message, partnerId } = req.body;
+    let fcmToken = [];
+
+    if (!title || !message || !partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: "title, message, and partnerId are required",
+      });
+    }
+
+    // Find the partner profile to get the userId
+    const partnerProfile = await partnerProfileModel.findById(partnerId);
+    if (!partnerProfile) {
+      return res.status(404).json({
+        success: false,
+        message: "Partner profile not found",
+      });
+    }
+
+    if (!partnerProfile.userId) {
+      return res.status(400).json({
+        success: false,
+        message: "This partner profile is not linked to a user account",
+      });
+    }
+
+    let user = await userModel.findOne({ _id: partnerProfile.userId });
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Linked user not found",
+      });
+    }
+
+    // Prioritize partner token
+    const token = user.partnerFcmToken || user.customerFcmToken;
+
+    if (token) {
+      fcmToken.push(token);
+    }
+
+    await notificationModel.create({
+      title,
+      message,
+      seen: false,
+      date: new Date(),
+      userId: user._id,
+      userType: "PARTNER",
+    });
+
+    if (fcmToken.length > 0) {
+      let payload = {
+        tokens: fcmToken,
+        notification: { title, body: message },
+        data: { type: "GENERAL_NOTIFICATION" }
+      };
+      sendPushNotification(payload);
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification sent to partner successfully",
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+
+
 // exports.sendNotificationCreateSurviceAdminAndSubAdmin = async (orderId) => {
 //   // Find the order and customer
 //   const order = await orderService.findById(orderId).populate("customerId");
@@ -1413,4 +1538,55 @@ exports.sendNotificationProductAccepted = async ({ userId, orderId, productTitle
       });
     }
   } catch (error) { console.error("Product Accept notification error:", error.message); }
+};
+
+// ====================  Get Partner Notifications  ======================= //
+
+exports.getPartnerNotifications = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    console.log(userId);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const filter = {
+      userId: userId,
+      userType: "PARTNER"
+    };
+
+    const [totalNotifications, notifications] = await Promise.all([
+      notificationModel.countDocuments(filter),
+      notificationModel
+        .find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      // Auto-mark as seen when fetched (standard pattern in this project)
+      notificationModel.updateMany(
+        { userId: userId, userType: "PARTNER", seen: false },
+        { $set: { seen: true } }
+      )
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Partner notifications fetched successfully",
+      data: notifications,
+      pagination: {
+        currentPage: page,
+        totalPages: Math.ceil(totalNotifications / limit),
+        totalNotifications,
+        limit,
+        hasNextPage: page < Math.ceil(totalNotifications / limit),
+        hasPreviousPage: page > 1
+      }
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message
+    });
+  }
 };

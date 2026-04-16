@@ -1255,43 +1255,45 @@ exports.getProductBySubCategorySlug = async (req, res) => {
 // ======================= getAllCategoryWithPcategory ====================== ||
 exports.getAllSubCategory = async (req, res) => {
   try {
-    let { page, disable, categoryStatus } = req.query;
-    const startIndex = page ? (page - 1) * 20 : 0;
-    const endIndex = startIndex + 20;
-    let obj = {
-      pCategory: { $ne: null },
-    };
-    if (disable === "false" || disable === "true") {
-      obj.disable = disable;
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.max(1, parseInt(req.query.limit) || 20);
+    const { disable, categoryStatus } = req.query;
+
+    // Build filter object
+    const filter = { pCategory: { $ne: null } };
+    if (disable === "true" || disable === "false") {
+      filter.disable = disable === "true";
     }
     if (categoryStatus) {
-      obj.categoryStatus = categoryStatus;
+      filter.categoryStatus = categoryStatus;
     }
 
-    const [length, getAllCategorys] = await Promise.all([
-      categoryModel.countDocuments(obj),
+    const skip = (page - 1) * limit;
+
+    const [total, data] = await Promise.all([
+      categoryModel.countDocuments(filter),
       categoryModel
-        .find(obj)
+        .find(filter)
         .sort({ createdAt: -1 })
-        .skip(startIndex)
-        .limit(endIndex - startIndex)   // fix: limit = count, not end index
+        .skip(skip)
+        .limit(limit)
         .populate("cityId", "cityName")
         .populate("pCategory", "name")
-        .lean()
+        .lean(),
     ]);
-    let count = Math.ceil(length / 20);
 
-    // if (!getAllCategorys.length) {
-    //   return res.status(400).send({
-    //     success: false,
-    //     message: "Sub Category Not Found",
-    //   });
-    // }
     return res.status(200).send({
       success: true,
-      message: "Sub Category Is Fatch Successfully...",
-      data: getAllCategorys,
-      page: count,
+      message: "Sub categories fetched successfully.",
+      data,
+      pagination: {
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+        pageSize: limit,
+        hasNext: page < Math.ceil(total / limit),
+        hasPrev: page > 1,
+      },
     });
   } catch (error) {
     return res.status(500).send({
