@@ -151,7 +151,7 @@ exports.getPartnerWallet = async (req, res) => {
 
 exports.getCommissions = async (req, res) => {
   try {
-    const { page = 1, limit = 50, partnerId, status, startDate, endDate } = req.query;
+    const { page = 1, limit = 50, partnerId, status, startDate, endDate, search } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
     const query = {

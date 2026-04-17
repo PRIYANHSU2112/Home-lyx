@@ -22,11 +22,15 @@ exports.searchData = async ({ q = "", page = 1, limit = 5 }) => {
       { title: { $regex: q, $options: "i" } },
       { brandName: { $regex: q, $options: "i" } },
     ],
+    status: "APPROVED",
+    disable: false,
   };
 
   // 🔍 SERVICE SEARCH (FIXED)
   const serviceQuery = {
     name: { $regex: q, $options: "i" },
+    categoryStatus: "APPROVED",
+    disable: false,
   };
 
   const [
