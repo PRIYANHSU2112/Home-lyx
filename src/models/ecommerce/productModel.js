@@ -79,11 +79,13 @@ const productModel = new mongoose.Schema(
     description: {
       type: String,
     },
-    specifications: {
-      type: String,
-      trim: true,
-      default: "",
-    },
+    specifications: [
+      {
+        key: { type: String, trim: true },
+        value: { type: String, trim: true },
+        _id: false,
+      },
+    ],
     variants: {
       type: [variantSchema],
       required: true,
