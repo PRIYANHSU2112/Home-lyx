@@ -199,9 +199,9 @@ exports.verifyBookingRazorpayPayment = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    await settlementService.settleBookingCommission(booking._id);
+    // await settlementService.settleBookingCommission(booking._id);
 
-    await sendNotificationToUserOnServiceBooking(
+    sendNotificationToUserOnServiceBooking(
       booking,
       booking.bookingStatus,
     );
@@ -408,7 +408,7 @@ exports.payBookingByWallet = async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    await sendNotificationToUserOnServiceBooking(
+    sendNotificationToUserOnServiceBooking(
       booking,
       booking.bookingStatus,
     );

@@ -267,12 +267,6 @@ exports.createBooking = async (req, res) => {
       serviceDateTime,
     });
 
-    // Fire notifications (fire-and-forget, don't block response)
-    Promise.all([
-      sendNotificationToUserOnServiceBooking(booking, "CREATED"),
-      sendNotificationToPartnerOnNewBooking(booking),
-    ]);
-
     return res.status(201).json({
       success: true,
       message: "Service booked successfully",
@@ -611,6 +605,7 @@ exports.partnerRespondBooking = async (req, res) => {
       booking.bookingStatus = "UPCOMING";
       booking.partnerAcceptedAt = new Date();
       await booking.save();
+
 
       // Notify user (booking confirmed) + partner (confirmation of their accept)
       Promise.all([
@@ -1001,7 +996,7 @@ exports.updateBookingStatusByAdmin = async (req, res) => {
     }
 
     // console.log(booking)
-    await sendNotificationToUserOnServiceBooking(
+     sendNotificationToUserOnServiceBooking(
       booking,
       booking.bookingStatus,
     );
