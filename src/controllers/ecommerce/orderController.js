@@ -948,7 +948,7 @@ exports.getOrderByCustomerId = async (req, res) => {
     const search = req.query.search || "";
     const skip = (page - 1) * limit;
 
-    const baseQuery = { customerId: req.User._id };
+    const baseQuery = { customerId: req.User._id , parentOrderId: null };
 
     const result = await orderModel.aggregate([
       // Match customer orders
