@@ -16,16 +16,18 @@ exports.listPartners = async (req, res) => {
 
     const query = {};
 
-    // if (status) {
-    //   query.disable = status === "inactive";
-    // }
-
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
         { email: { $regex: search, $options: "i" } },
-        { phoneNumber: { $regex: search, $options: "i" } },
+        { vendorType: { $regex: search, $options: "i" } },
+        { $expr: { $regexMatch: { input: { $toString: "$phoneNumber" }, regex: search, options: "i" } } }
       ];
+    }
+
+    if (status) {
+      if (status === "active") query.disable = false;
+      if (status === "inactive") query.disable = true;
     }
 
     const total = await partnerProfileModel.countDocuments(query);
