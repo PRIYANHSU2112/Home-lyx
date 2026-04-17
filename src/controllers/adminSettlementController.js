@@ -16,9 +16,9 @@ exports.listPartners = async (req, res) => {
 
     const query = {};
 
-    if (status) {
-      query.disable = status === "inactive";
-    }
+    // if (status) {
+    //   query.disable = status === "inactive";
+    // }
 
     if (search) {
       query.$or = [

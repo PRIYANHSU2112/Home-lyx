@@ -174,7 +174,7 @@ exports.getByProductId = async (req, res) => {
     }
 
     const similarProduct = await productModel
-      .find({ _id: { $ne: product._id }, categoryId: product.categoryId, disable: false })
+      .find({ _id: { $ne: product._id }, categoryId: product.categoryId, disable: false , status:"APPROVED" })
       .select("title slug variants thumnail brandName reviewRating subtitle features")
       .sort({ createdAt: -1 })
       .limit(limit);

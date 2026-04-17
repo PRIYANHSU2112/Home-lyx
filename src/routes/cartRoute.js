@@ -17,12 +17,15 @@ router.post(
   controller.createCartByAdmin
 );
 router.post("/createDummyCart", controller.createDummyCart);
+
 // ================== Get ==================
+
 router.get(
   "/getAllCartBycustomerId/:customerId",
   dummyBillDetail,
   controller.getAllCartBycustomerId
 );
+
 
 // ================== Put ==================
 router.put("/quantityUpdate/:CartId", controller.quantityUpdate);
