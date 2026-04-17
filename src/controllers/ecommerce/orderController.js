@@ -360,7 +360,7 @@ exports.createOrder = async (req, res) => {
       //   { session }
       // );
 
-      // await CartModel.deleteOne({ customerId });
+      await CartModel.deleteOne({ customerId });
     }
 
     await session.commitTransaction();
@@ -475,7 +475,7 @@ exports.verifyPayment = async (req, res) => {
       { session }
     );
 
-    //  await CartModel.deleteOne({ customerId: order.customerId });
+     await CartModel.deleteOne({ customerId: order.customerId });
 
     //  STOCK UPDATE + REFUND SAFETY
 

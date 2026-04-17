@@ -4,6 +4,7 @@ const partnerTransactionModel = require("../models/partnerTransaction");
 const withdrawalRequestModel = require("../models/withdrawalRequest");
 const partnerProfileModel = require("../models/partnerProfileModel");
 const userModel = require("../models/userModel");
+const orderModel = require("../models/ecommerce/orderModel");
 const mongoose = require("mongoose");
 
 /**
@@ -159,6 +160,31 @@ exports.getCommissions = async (req, res) => {
 
     if (partnerId) {
       query.partnerId = mongoose.Types.ObjectId(partnerId);
+    }
+
+    if (search) {
+      // 1. Search for matching partners
+      const partners = await partnerProfileModel.find({
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+          { $expr: { $regexMatch: { input: { $toString: "$phoneNumber" }, regex: search, options: "i" } } }
+        ]
+      }, { _id: 1 }).lean();
+      const matchedPartnerIds = partners.map(p => p._id);
+
+      // 2. Search for matching orders
+      const orders = await orderModel.find({
+        orderId: { $regex: search, $options: "i" }
+      }, { _id: 1 }).lean();
+      const matchedOrderIds = orders.map(o => o._id);
+
+      // 3. Combine in query
+      query.$or = [
+        { partnerId: { $in: matchedPartnerIds } },
+        { orderId: { $in: matchedOrderIds } },
+        { description: { $regex: search, $options: "i" } }
+      ];
     }
 
     if (status) {
