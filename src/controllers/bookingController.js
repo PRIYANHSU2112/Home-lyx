@@ -65,12 +65,12 @@ exports.createBooking = async (req, res) => {
       });
     }
 
-    if (!subCategory.partnerId) {
-      return res.status(400).json({
-        success: false,
-        message: "This service is not assigned to any partner",
-      });
-    }
+    // if (!subCategory.partnerId) {
+    //   return res.status(400).json({
+    //     success: false,
+    //     message: "This service is not assigned to any partner",
+    //   });
+    // }
 
     /* ---------- GEO-BASED CITY VALIDATION ---------- */
     const { latitude, longitude } = serviceLocation;

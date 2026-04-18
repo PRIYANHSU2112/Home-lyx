@@ -1037,3 +1037,116 @@ exports.getUserBYToken = async (req, res) => {
     return res.status(500).send({ success: false, message: error.message });
   }
 };
+
+// =================== Update Admin / SubAdmin (Admin Only) =================== ||
+
+exports.updateAdminAndSubAdmin = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { fullName, email, phoneNumber, permissions, userType: newUserType, disable, password } = req.body;
+
+    // req.Admin is the logged-in admin set by adminRoute param middleware
+    const callerUser = req.Admin;
+
+    // Only a strict ADMIN (not sub-admin) can call this endpoint
+    if (!callerUser.userType.includes("ADMIN")) {
+      return res.status(403).json({
+        success: false,
+        message: "Only ADMIN users are authorized to perform this action",
+      });
+    }
+
+    // Fetch the target user
+    const targetUser = await userModel.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Only allow updating ADMIN or SUB_ADMIN accounts
+    const isTargetAdminOrSub =
+      targetUser.userType.includes("ADMIN") ||
+      targetUser.userType.includes("SUB_ADMIN");
+
+    if (!isTargetAdminOrSub) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only update ADMIN or SUB_ADMIN users",
+      });
+    }
+
+    // Validate new userType if provided
+    const allowedTypes = ["ADMIN", "SUB_ADMIN"];
+    if (newUserType && !allowedTypes.includes(newUserType)) {
+      return res.status(400).json({
+        success: false,
+        message: "userType must be either ADMIN or SUB_ADMIN",
+      });
+    }
+
+    // Validate email uniqueness if provided
+    if (email) {
+      const emailExists = await userModel.findOne({ email, _id: { $ne: userId } });
+      if (emailExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already in use by another user",
+        });
+      }
+    }
+
+    // Validate phone uniqueness if provided
+    if (phoneNumber) {
+      if (!validateMobileNumber(phoneNumber)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a valid 10-digit phone number",
+        });
+      }
+      const phoneExists = await userModel.findOne({ phoneNumber, _id: { $ne: userId } });
+      if (phoneExists) {
+        return res.status(400).json({
+          success: false,
+          message: "Phone number is already in use by another user",
+        });
+      }
+    }
+
+    // Build update object
+    const updateObj = {};
+    if (fullName) updateObj.fullName = fullName;
+    if (email) updateObj.email = email;
+    if (phoneNumber) updateObj.phoneNumber = phoneNumber;
+    if (disable !== undefined) updateObj.disable = disable;
+    if (newUserType) updateObj.userType = [newUserType];
+    if (permissions) {
+      updateObj.permissions = Array.isArray(permissions) ? permissions : [permissions];
+    }
+    if (password) {
+      updateObj.password = bcrypt.hashSync(password, 8);
+    }
+
+    if (Object.keys(updateObj).length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No valid fields provided for update",
+      });
+    }
+
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      { $set: updateObj },
+      { new: true, select: "-password" }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

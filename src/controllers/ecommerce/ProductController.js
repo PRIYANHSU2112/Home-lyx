@@ -43,8 +43,11 @@ exports.createProduct = async (req, res) => {
       sku, returnInDays, metaTitle, metaDescription,
       metaKeywords, highlights, specifications, variants, brandName
     } = req.body;
-
-    const partnerId = req.partner._id;
+    
+    let partnerId = null;
+    if(req.partner){
+      partnerId = req.partner._id;
+    }
 
     const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/avif"]);
 

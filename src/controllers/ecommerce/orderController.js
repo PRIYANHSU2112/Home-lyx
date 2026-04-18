@@ -1345,7 +1345,9 @@ exports.returnRequestOrder = async (req, res) => {
       });
     }
 
-    const deliveredDate = new Date(order.deliveredDate);
+    const rawDeliveredDate = order.deliveredDate || order.updatedAt;
+    
+    const deliveredDate = new Date(rawDeliveredDate);
     deliveredDate.setHours(23, 59, 59, 999);
     deliveredDate.setDate(
       deliveredDate.getDate() + targetItem.returnInDays - 1

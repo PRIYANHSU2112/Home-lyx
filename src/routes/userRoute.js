@@ -54,5 +54,11 @@ router.put("/disableUser/:userId/:adminId", isUser, controller.disableUser);  //
 router.post("/partnerLogin", controller.partnerLogin);//done
 router.post("/partnerVerify", controller.partnerVerify);//done
 
+// =================== Admin: Update Admin / SubAdmin ===================
+router.put(
+  "/updateAdminAndSubAdmin/:userId/:adminId",  // done
+  isUser,
+  controller.updateAdminAndSubAdmin
+);
 
 module.exports = router;
