@@ -2,7 +2,7 @@ const cron = require("node-cron");
 const bookingModel = require("../models/bookingModel");
 const {sendNotificationToUserOnServiceBooking} = require("../controllers/notificationController")
 
-
+// job sheduler
 cron.schedule("*/1 * * * *", async () => {
     try {
         const now = new Date();
@@ -10,7 +10,7 @@ cron.schedule("*/1 * * * *", async () => {
 
         const oneDayLater = new Date(now.getTime() + 24 * 60 * 60 * 1000);
         const twoHoursLater = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-        git 
+
         const oneDayBookings = await bookingModel.find({
             serviceDateTime: { $lte: oneDayLater, $gt: now },
             oneDayReminderSent: false,
