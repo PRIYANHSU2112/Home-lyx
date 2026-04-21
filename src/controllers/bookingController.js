@@ -85,7 +85,7 @@ exports.createBooking = async (req, res) => {
             type: "Point",
             coordinates: [longitude, latitude],
           },
-          $maxDistance: 50000, // 50 km in meters
+          $maxDistance: 100000, // 100 km in meters
         },
       },
     });

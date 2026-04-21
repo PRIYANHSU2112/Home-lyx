@@ -157,7 +157,8 @@ exports.updateDocumentsPartnerProfile = async (req, res) => {
   }
 };
 
-// ========================== Get By Id =================================== ||
+// ========================== Get By Id =================================== |
+
 
 exports.getBypartnerProfileByUserId = async (req, res) => {
   try {

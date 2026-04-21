@@ -89,7 +89,6 @@ exports.getCategoryById = async (req, res) => {
     // 2️⃣ Fetch category
     const category = await categoryModel
       .findById(categoryId)
-
       .populate("pCategory", "name slug")
       .populate("cityId", "cityName");
 
