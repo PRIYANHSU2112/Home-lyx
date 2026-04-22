@@ -613,12 +613,12 @@ exports.getDashboardStats = async (req, res) => {
         totalEarning: stats.totalEarning || 0,
         totalWithdrawn: stats.totalWithdrawn || 0,
         totalPending: stats.totalPending || 0,
-        totalAvailable: (stats.totalEarning || 0) - (stats.totalWithdrawn || 0) - (stats.totalPending || 0),
+        totalAvailable: (stats.totalEarning || 0) - (stats.totalWithdrawn || 0) - (stats.totalPending || 0) - (withdrawalStats.total || 0),
         pendingWithdrawalsAmount: withdrawalStats.total || 0,
         pendingWithdrawalsCount: withdrawalStats.count || 0,
         activePartners: partnerCount,
       },
-    });
+    });   
   } catch (error) {
     console.error("Error in getDashboardStats:", error);
     return res.status(500).json({

@@ -1664,6 +1664,10 @@ exports.updatePartnerOrderStatus = async (req, res) => {
       return res.status(403).json({ success: false, message: "Unauthorized: This is not your order" });
     }
 
+    if(status === "ACCEPTED"){
+      status = "ORDERED"
+    }
+    
     // 1. Update Sub-Order Status
     subOrder.status = status;
     subOrder.product.forEach(p => {
